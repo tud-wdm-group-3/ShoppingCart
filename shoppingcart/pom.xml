@@ -10,6 +10,7 @@
   <version>1.0-SNAPSHOT</version>
   <modules>
     <module>order</module>
+    <module>payment</module>
   </modules>
 
   <name>shoppingcart</name>
