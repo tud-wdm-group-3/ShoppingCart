@@ -1,17 +1,34 @@
 package com.wsdm.order;
 
-import lombok.Builder;
+
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.springframework.data.redis.core.RedisHash;
+import lombok.NoArgsConstructor;
 
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "Orders")
 @Data
-@Builder
-@RedisHash("Order")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Order {
-
-    private int id;
-    private boolean payment_status;
-    private int[] item_ids;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int order_id;
+    private boolean paid;
+    @ElementCollection
+    private List<Integer> items;
     private int user_id;
     private int total_cost;
+
+    public Order(int user_id)
+    {
+        paid=false;
+        items=new ArrayList<>();
+        user_id=user_id;
+        total_cost=0;
+    }
 }
