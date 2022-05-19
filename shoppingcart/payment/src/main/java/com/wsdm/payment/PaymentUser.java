@@ -24,7 +24,5 @@ public class PaymentUser {
             generator = "user_id_sequence"
     )
     private Integer id;
-    private String firstName;
-    private String lastName;
-    private String email;
+    private Integer credit;
 }
