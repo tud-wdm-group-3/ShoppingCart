@@ -5,9 +5,9 @@ spring:
   application:
     name: payment
   datasource:
-    username: 'paymentuser'
-    password: 'paymentpwd'
-    url: jdbc:postgresql://localhost:5432/paymentdb
+    username: 'pguser'
+    password: 'pgpwd'
+    url: jdbc:postgresql://payment-db:5432/pgdb
   jpa:
     properties:
       hibernate:
