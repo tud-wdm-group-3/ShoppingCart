@@ -2,6 +2,24 @@ version: '3'
 
 services:
 
+  order:
+    build:
+      context: .
+      dockerfile: Dockerfile-order
+    ports:
+      - "8082:8080"
+    depends_on:
+      - order-db
+
+  order-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: postgres
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+
   payment:
     build:
       context: .
@@ -19,11 +37,28 @@ services:
       POSTGRES_DB: pgdb
     volumes:
       - payment-db-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
+#    ports:
+#      - "5432:5432"
 
-  # pgadmin to inspect the dbs
+  stock:
+    build:
+      context: .
+      dockerfile: Dockerfile-stock
+    ports:
+      - "8081:8081"
+    depends_on:
+      - stock-db
+
+  stock-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: wdm
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: stock
+    volumes:
+      - stock-db-data:/var/lib/postgresql/data
+
+# pgadmin to inspect the dbs
 #  pgadmin:
 #    container_name: pgadmin
 #    image: dpage/pgadmin4
@@ -38,5 +73,7 @@ services:
 #    restart: unless-stopped
 
 volumes:
+  order-db-data:
   payment-db-data:
-  pgadmin:
+  stock-db-data:
+  #pgadmin:
