@@ -11,6 +11,7 @@
   <modules>
     <module>order</module>
     <module>stock</module>
+    <module>payment</module>
   </modules>
 
   <name>shoppingcart</name>

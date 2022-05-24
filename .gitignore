@@ -1,5 +1,3 @@
 .idea/*
 shoppingcart/*/target/*
-/shoppingcart/order/target/
-/shoppingcart/order/order.iml
-/shoppingcart/shoppingcart.iml
+*.iml
