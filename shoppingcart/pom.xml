@@ -12,6 +12,7 @@
     <module>order</module>
     <module>stock</module>
     <module>payment</module>
+    <module>kafka</module>
   </modules>
 
   <name>shoppingcart</name>
