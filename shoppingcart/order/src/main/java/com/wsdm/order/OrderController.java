@@ -3,6 +3,10 @@ package com.wsdm.order;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -33,6 +37,12 @@ public class OrderController {
         return service.findOrder(order_id).get();
     }
 
+    @GetMapping(path = "/test")
+    public String test() {
+        this.sendCheckout("test");
+        return "check logs!";
+    }
+
     @PostMapping(path = "/addItem/{order_id}/{item_id}")
     public void addItem(@PathVariable(name="order_id") int order_id,
                        @PathVariable(name="item_id") int item_id) {
@@ -53,5 +63,28 @@ public class OrderController {
             return ResponseEntity.ok().build();
         else
             return ResponseEntity.internalServerError().build();
+    }
+
+
+    private static final String TOPIC = "checkout";
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    public void sendCheckout(Order order) {
+        ListenableFuture<SendResult<String, String>> future =
+                kafkaTemplate.send(TOPIC, message);
+
+        future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
+            @Override
+            public void onSuccess(SendResult<String, String> result) {
+                // TODO: Message was received.
+            }
+
+            @Override
+            public void onFailure(Throwable ex) {
+                // TODO: Message failed.
+            }
+        });
     }
 }
