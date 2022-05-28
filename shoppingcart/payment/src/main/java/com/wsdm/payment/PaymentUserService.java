@@ -1,6 +1,12 @@
 package com.wsdm.payment;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.PartitionOffset;
+import org.springframework.kafka.annotation.TopicPartition;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,11 +34,6 @@ public class PaymentUserService {
         PaymentUser paymentUser = paymentUserRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("user with Id " + userId + " does not exist"));
         return paymentUser;
-//        Optional<PaymentUser> paymentUser = paymentUserRepository.findById(userId);
-//        if (paymentUser.isPresent()) {
-//            System.out.println("asdf");
-//        }
-//        return paymentUser;
     }
 
     @Transactional
@@ -45,21 +46,36 @@ public class PaymentUserService {
         return true;  // TODO return false when fail for some reason
     }
 
-//    @Transactional  // the entity goes into a managed state, you dont have to write JPQL queries
-//    public void updateStudent(Long studentId, String name, String email) {
-//        Student student = studentRepository.findById(studentId)
-//                .orElseThrow(() -> new IllegalStateException(
-//                        "student with id " + studentId + " does not exist"));
-//        if (name != null && name.length() > 0 && !Objects.equals(student.getName(), name)) {
-//            student.setName(name);
-//        }
-//        if (email != null && email.length() > 0 && !Objects.equals(student.getEmail(), email)) {
-//            Optional<Student> studentOptional = studentRepository
-//                    .findStudentByEmail(email);
-//            if (studentOptional.isPresent()) {
-//                throw new IllegalStateException("email taken");
-//            }
-//            student.setEmail(email);
-//        }
-//    }
+
+    /**
+     * Internal messaging
+     */
+
+    private final int numStockInstances = 1;
+    private final int numPaymentInstances = 1;
+    private final int numOrderInstances = 1;
+    private final int myPaymentInstanceId = 1;
+
+    @Autowired
+    private KafkaTemplate<Integer, Boolean> fromPaymentTemplate;
+
+    @Transactional
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
+            partitionOffsets = {@PartitionOffset(partition = this.myPaymentInstanceId, initialOffset = "0")}))
+    protected void getPaymentRequest(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
+        int orderId = request.key();
+        int userId = request.value().getFirst();
+        int cost = request.value().getSecond();
+        PaymentUser user = paymentUserRepository.getById(userId);
+        int credit = user.getCredit();
+        boolean result;
+        if (cost > credit) {
+            result = false;
+        } else {
+            user.setCredit(credit - cost);
+            result = true;
+        }
+        int partition = orderId % numOrderInstances;
+        fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, result);
+    }
 }
