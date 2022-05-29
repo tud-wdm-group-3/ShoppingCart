@@ -2,13 +2,11 @@ package com.wsdm.stock;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +24,7 @@ public class StockService {
     }
 
     public Optional<Stock> findStock(int item_id) {
-        Optional<Stock> res = stockRepository.findById(item_id);
-        return res;
+        return stockRepository.findById(item_id);
     }
 
     public boolean addStock(int item_id, int amount) {
@@ -66,30 +63,79 @@ public class StockService {
      * Internal messaging
      */
 
-    private final int numStockInstances = 1;
-    private final int numPaymentInstances = 1;
-    private final int numOrderInstances = 1;
-    private final int myStockInstanceId = 1;
-
     @Autowired
     private KafkaTemplate<Integer, Boolean> fromStockTemplate;
 
-    @Transactional
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = this.myStockInstanceId, initialOffset = "0")}))
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockCheck",
+            partitionOffsets = {@PartitionOffset(partition = "${myStockInstanceId}", initialOffset = "0")}))
     protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
         int orderId = request.key();
-        Map<Integer, Integer> itemIdToAmount = new HashMap<>();
-        for (int itemId : request.value()) {
-            itemIdToAmount.put(itemId, itemIdToAmount.getOrDefault(itemId, 0) + 1);
+        int partition = orderId % Environment.numOrderInstances;
+
+        // Count items
+        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+
+        // Check if enough of everything
+        boolean enoughInStock = true;
+        for (int itemId : itemIdToAmount.keySet()) {
+            Optional<Stock> stock = findStock(itemId);
+            int required = itemIdToAmount.get(itemId);
+            if (stock.isPresent()) {
+                enoughInStock = enoughInStock && stock.get().getAmount() >= required;
+                if (!enoughInStock) {
+                    break;
+                }
+            } else {
+                throw new IllegalStateException("Stock with id " + itemId + " does not exist");
+            }
         }
 
-        for (int itemId : itemIdToAmount.keySet()) {
-            
-        }
-        int partition = orderId % numOrderInstances;
-        fromStockTemplate.send("fromStockCheck", partition, orderId, result);
+        fromStockTemplate.send("fromStockCheck", partition, orderId, enoughInStock);
     }
 
-    // TODO: Stock transaction
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
+            partitionOffsets = {@PartitionOffset(partition = "${myStockInstanceId}", initialOffset = "0")}))
+    protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
+        int orderId = request.key();
+        int partition = orderId % Environment.numOrderInstances;
+
+        // Count items
+        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+
+        // Check if still enough of everything
+        // this prevents having to do rollbacks internally
+        boolean enoughInStock = true;
+        for (int itemId : itemIdToAmount.keySet()) {
+            Optional<Stock> stock = findStock(itemId);
+            int required = itemIdToAmount.get(itemId);
+            if (stock.isPresent()) {
+                enoughInStock = enoughInStock && stock.get().getAmount() >= required;
+                if (!enoughInStock) {
+                    break;
+                }
+            } else {
+                throw new IllegalStateException("Stock with id " + itemId + " does not exist");
+            }
+        }
+
+        // subtract amounts from stock
+        if (enoughInStock) {
+            for (int itemId : itemIdToAmount.keySet()) {
+                Stock stock = findStock(itemId).get();
+                int amountInStock = stock.getAmount();
+                int required = itemIdToAmount.get(itemId);
+                stock.setAmount(amountInStock - required);
+            }
+        }
+
+        fromStockTemplate.send("fromStockCheck", partition, orderId, enoughInStock);
+    }
+
+    private Map<Integer, Integer> countItems(List<Integer> items) {
+        Map<Integer, Integer> itemIdToAmount = new HashMap<>();
+        for (int itemId : items) {
+            itemIdToAmount.put(itemId, itemIdToAmount.getOrDefault(itemId, 0) + 1);
+        }
+        return itemIdToAmount;
+    }
 }

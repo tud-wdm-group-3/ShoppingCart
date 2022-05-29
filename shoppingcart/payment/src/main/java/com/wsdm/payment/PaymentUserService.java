@@ -30,10 +30,8 @@ public class PaymentUserService {
         return paymentUser.getId();
     }
 
-    public PaymentUser findUser(Integer userId) {
-        PaymentUser paymentUser = paymentUserRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("user with Id " + userId + " does not exist"));
-        return paymentUser;
+    public Optional<PaymentUser> findUser(Integer userId) {
+        return paymentUserRepository.findById(userId);
     }
 
     @Transactional
@@ -47,35 +45,23 @@ public class PaymentUserService {
     }
 
 
-    /**
-     * Internal messaging
-     */
-
-    private final int numStockInstances = 1;
-    private final int numPaymentInstances = 1;
-    private final int numOrderInstances = 1;
-    private final int myPaymentInstanceId = 1;
-
     @Autowired
     private KafkaTemplate<Integer, Boolean> fromPaymentTemplate;
 
     @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = this.myPaymentInstanceId, initialOffset = "0")}))
-    protected void getPaymentRequest(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
+            partitionOffsets = {@PartitionOffset(partition = "${myPaymentInstanceId}", initialOffset = "0")}))
+    protected void getPaymentTransaction(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
         int orderId = request.key();
         int userId = request.value().getFirst();
         int cost = request.value().getSecond();
         PaymentUser user = paymentUserRepository.getById(userId);
         int credit = user.getCredit();
-        boolean result;
-        if (cost > credit) {
-            result = false;
-        } else {
+        boolean result = credit >= cost;
+        if (result) {
             user.setCredit(credit - cost);
-            result = true;
         }
-        int partition = orderId % numOrderInstances;
+        int partition = orderId % Environment.numOrderInstances;
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, result);
     }
 }

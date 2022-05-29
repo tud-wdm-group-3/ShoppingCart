@@ -16,12 +16,6 @@ import java.util.Map;
 
 public class TransactionHandler {
 
-    // TODO: fix these to the actual values
-    private final int numStockInstances = 1;
-    private final int numPaymentInstances = 1;
-    private final int numOrderInstances = 1;
-    private final int myOrderInstanceId = 1;
-
     private Map<Integer, Order> currentOrders;
 
     public TransactionHandler() {
@@ -43,14 +37,14 @@ public class TransactionHandler {
 
     public void sendStockCheck(Order order) {
         // STEP 1: SEND STOCK CHECK
-        Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), numStockInstances);
+        Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             toStockTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
-                    partitionOffsets = {@PartitionOffset(partition = this.myOrderInstanceId, initialOffset = "0")}))
+                    partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
     public void getStockCheckResponse(Pair<Integer, Boolean> orderResultPair) {
         // STEP 2: RECEIVE RESPONSE FROM STOCK CHECK
         if (processResponse(orderResultPair)) {
@@ -68,14 +62,14 @@ public class TransactionHandler {
         int orderId = order.getOrderId();
         int userId = order.getUserId();
         int totalCost = order.getTotalCost();
-        int partition = getPartition(userId, numPaymentInstances);
+        int partition = getPartition(userId, Environment.numPaymentInstances);
         Pair<Integer, Integer> userAndPrice = Pair.of(userId, totalCost);
 
         toPaymentTemplate.send("toPaymentTransaction", partition, orderId, userAndPrice);
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = this.myOrderInstanceId, initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
     private void getPaymentResponse(Pair<Integer, Boolean> orderResultPair) {
         // STEP 4: RECEIVE RESPONSE FROM PAYMENT TRANSACTION
         if (processResponse(orderResultPair)) {
@@ -87,14 +81,14 @@ public class TransactionHandler {
 
     private void sendStockTransaction(Order order) {
         // STEP 5: START STOCK TRANSACTION
-        Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), numStockInstances);
+        Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
                 toStockTemplate.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = this.myOrderInstanceId, initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "#{myOrderInstanceId}", initialOffset = "0")}))
     private void getStockTransactionResponse(Pair<Integer, Boolean> orderResultPair) {
         // STEP 6: RECEIVE RESPONSE FROM STOCK TRANSACTION
         if (processResponse(orderResultPair)) {
@@ -109,13 +103,13 @@ public class TransactionHandler {
 
     private boolean processResponse(Pair<Integer, Boolean> orderResultPair) {
         int orderId = orderResultPair.getFirst();
-        boolean isPossible = orderResultPair.getSecond();
+        boolean result = orderResultPair.getSecond();
 
         if (!currentOrders.containsKey(orderId)) {
             throw new IllegalArgumentException("Received response to order not in transaction.");
         }
 
-        return isPossible;
+        return result;
     }
 
     private int getPartition(int id, int numInstances) {
