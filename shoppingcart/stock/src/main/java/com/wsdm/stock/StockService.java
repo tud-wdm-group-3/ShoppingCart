@@ -23,12 +23,12 @@ public class StockService {
         this.stockRepository = stockRepository;
     }
 
-    public Optional<Stock> findStock(int item_id) {
-        return stockRepository.findById(item_id);
+    public Optional<Stock> findStock(int itemId) {
+        return stockRepository.findById(itemId);
     }
 
-    public boolean addStock(int item_id, int amount) {
-        Optional<Stock> res = stockRepository.findById(item_id);
+    public boolean addStock(int itemId, int amount) {
+        Optional<Stock> res = stockRepository.findById(itemId);
         if(res.isPresent()) {
             Stock stock = res.get();
             stock.setAmount(stock.getAmount()+amount);
@@ -38,8 +38,8 @@ public class StockService {
         return false;
     }
 
-    public boolean subtractStock(int item_id, int amount) {
-        Optional<Stock> res = stockRepository.findById(item_id);
+    public boolean subtractStock(int itemId, int amount) {
+        Optional<Stock> res = stockRepository.findById(itemId);
         if(res.isPresent()) {
             Stock stock = res.get();
             if (stock.getAmount() >= amount) {
@@ -54,6 +54,11 @@ public class StockService {
     public Stock addItem(double price) {
         Stock stock = new Stock(price);
         stock.setPrice(price);
+
+        // Convert local to global id
+        stockRepository.save(stock);
+        int globalId = stock.getItemId() * Environment.numOrderInstances + Environment.myStockInstanceId;
+        stock.setItemId(globalId);
         stockRepository.save(stock);
 
         return stock;

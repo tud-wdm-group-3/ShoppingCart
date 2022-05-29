@@ -26,7 +26,13 @@ public class PaymentUserService {
         PaymentUser paymentUser = PaymentUser.builder()
                 .credit(0)
                 .build();
+
+        // Convert local to global id
         paymentUserRepository.save(paymentUser);
+        int globalId = paymentUser.getId() * Environment.numOrderInstances + Environment.myPaymentInstanceId;
+        paymentUser.setId(globalId);
+        paymentUserRepository.save(paymentUser);
+
         return paymentUser.getId();
     }
 

@@ -24,7 +24,13 @@ public class OrderService {
     public int createOrder(int userId){
         Order order=new Order();
         order.setUserId(userId);
+
+        // Convert local to global id
         repository.save(order);
+        int globalId = order.getOrderId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
+        order.setOrderId(globalId);
+        repository.save(order);
+
         return order.getOrderId();
     }
 
