@@ -17,9 +17,12 @@ import java.util.Map;
 public class TransactionHandler {
 
     private Map<Integer, Order> currentOrders;
+    private Map<Integer, Map<String, Object>> stockChecks;
+    private Map<Integer, Map<String, Object>> stockChecks;
 
     public TransactionHandler() {
         this.currentOrders = new HashMap<>();
+        this.stockChecks = new HashMap<>();
     }
 
     public boolean startCheckout(Order order) {
@@ -38,19 +41,36 @@ public class TransactionHandler {
     public void sendStockCheck(Order order) {
         // STEP 1: SEND STOCK CHECK
         Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
+
+        Map<String, Object> log = new HashMap<>();
+        log.put("total", stockPartition.size());
+        log.put("count", 0);
+        log.put("flag", true);
+        stockChecks.put(order.getOrderId(), log);
+
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             toStockTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
     }
 
+
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
-                    partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
     public void getStockCheckResponse(Pair<Integer, Boolean> orderResultPair) {
         // STEP 2: RECEIVE RESPONSE FROM STOCK CHECK
-        if (processResponse(orderResultPair)) {
-            sendPaymentTransaction(currentOrders.get(orderResultPair.getFirst()));
-        } else {
+        Map<String, Object> log = stockChecks.get(orderResultPair.getFirst());
+        if (!(boolean) log.get("flag") || !processResponse(orderResultPair)){
             // TODO: failed
+        } else {
+            log.put("count", (int) log.get("count") + 1);
+            log.put("flag", orderResultPair.getSecond());
+            stockChecks.put(orderResultPair.getFirst(), log);
+
+            if (log.get("count") == log.get("total") && (boolean) log.get("flag")){
+                // Remove it from the log since check is completed
+                stockChecks.remove(orderResultPair.getFirst());
+                sendPaymentTransaction(currentOrders.get(orderResultPair.getFirst()));
+            }
         }
     }
 
