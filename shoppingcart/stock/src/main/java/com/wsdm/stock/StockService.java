@@ -8,10 +8,7 @@ import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class StockService {
@@ -25,6 +22,11 @@ public class StockService {
 
     public Optional<Stock> findStock(int itemId) {
         return stockRepository.findById(itemId);
+    }
+
+    public List<Stock> findStocks(List<Integer> item_ids) {
+        List<Stock> res = stockRepository.findAllById(item_ids);
+        return res;
     }
 
     public boolean addStock(int itemId, int amount) {
@@ -79,20 +81,20 @@ public class StockService {
 
         // Count items
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findStocks(ids);
 
-        // Check if enough of everything
         boolean enoughInStock = true;
-        for (int itemId : itemIdToAmount.keySet()) {
-            Optional<Stock> stock = findStock(itemId);
-            int required = itemIdToAmount.get(itemId);
-            if (stock.isPresent()) {
-                enoughInStock = enoughInStock && stock.get().getAmount() >= required;
+        if (stocks.size() == ids.size()){
+            for (Stock stock : stocks){
+                int required = itemIdToAmount.get(stock.getItemId());
+                enoughInStock = enoughInStock && stock.getAmount() >= required;
                 if (!enoughInStock) {
                     break;
                 }
-            } else {
-                throw new IllegalStateException("Stock with id " + itemId + " does not exist");
             }
+        } else {
+            throw new IllegalStateException("An item id in the order does not exist in stock");
         }
 
         fromStockTemplate.send("fromStockCheck", partition, orderId, enoughInStock);
@@ -106,34 +108,31 @@ public class StockService {
 
         // Count items
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findStocks(ids);
 
         // Check if still enough of everything
         // this prevents having to do rollbacks internally
+        // No reason to check if an item id is wrong at this point
         boolean enoughInStock = true;
-        for (int itemId : itemIdToAmount.keySet()) {
-            Optional<Stock> stock = findStock(itemId);
-            int required = itemIdToAmount.get(itemId);
-            if (stock.isPresent()) {
-                enoughInStock = enoughInStock && stock.get().getAmount() >= required;
-                if (!enoughInStock) {
-                    break;
-                }
-            } else {
-                throw new IllegalStateException("Stock with id " + itemId + " does not exist");
+        for (Stock stock : stocks){
+            int required = itemIdToAmount.get(stock.getItemId());
+            enoughInStock = enoughInStock && stock.getAmount() >= required;
+            if (!enoughInStock) {
+                break;
             }
         }
 
         // subtract amounts from stock
         if (enoughInStock) {
-            for (int itemId : itemIdToAmount.keySet()) {
-                Stock stock = findStock(itemId).get();
+            for (Stock stock : stocks) {
                 int amountInStock = stock.getAmount();
-                int required = itemIdToAmount.get(itemId);
+                int required = itemIdToAmount.get(stock.getItemId());
                 stock.setAmount(amountInStock - required);
             }
         }
 
-        fromStockTemplate.send("fromStockCheck", partition, orderId, enoughInStock);
+        fromStockTemplate.send("fromStockTransaction", partition, orderId, enoughInStock);
     }
 
     private Map<Integer, Integer> countItems(List<Integer> items) {

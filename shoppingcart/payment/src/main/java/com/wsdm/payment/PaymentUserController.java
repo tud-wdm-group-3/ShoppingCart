@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @Slf4j
 @RestController
 @RequestMapping("payment")
@@ -24,7 +26,7 @@ public class PaymentUserController extends KafkaSubscriber {
     }
 
     @GetMapping(path="find_user/{user_id}")
-    public PaymentUser findUser(@PathVariable("user_id") Integer userId) {
+    public Optional<PaymentUser> findUser(@PathVariable("user_id") Integer userId) {
         return paymentUserService.findUser(userId);
     }
 }
