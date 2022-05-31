@@ -9,6 +9,8 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @RestController
@@ -19,6 +21,9 @@ public class OrderController {
     OrderService service;
     @PostMapping(path = "/create/{userId}")
     public Map<String,String> create(@PathVariable(name="userId") int userId) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        System.out.println("creating user with id:"+userId+"at "+dtf.format(now));
         HashMap<String,String> output=new HashMap<>();
         output.put("orderId",Integer.toString(service.createOrder(userId)));
         return output;

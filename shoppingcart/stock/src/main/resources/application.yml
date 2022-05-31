@@ -1,12 +1,12 @@
 server:
-  port: 8081
+  port: 8084
 spring:
   application:
     name: stock
   datasource:
-    password: password
+    password: 123
     url: jdbc:postgresql://localhost:5432/stock
-    username: wdm
+    username: postgres
   jpa:
 
     properties:

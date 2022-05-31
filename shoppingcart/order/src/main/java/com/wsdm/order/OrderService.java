@@ -28,8 +28,8 @@ public class OrderService {
         // Convert local to global id
         repository.save(order);
         int globalId = order.getOrderId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
-        order.setOrderId(globalId);
-        repository.save(order);
+        //order.setOrderId(globalId);
+        //repository.save(order);
 
         return order.getOrderId();
     }
