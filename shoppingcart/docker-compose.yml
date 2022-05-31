@@ -2,57 +2,78 @@ version: '3'
 
 services:
 
-  payment-db:
-    container_name: payment-db
+  order:
+    build:
+      context: .
+      dockerfile: Dockerfile-order
+    ports:
+      - "8082:8080"
+    depends_on:
+      - order-db
+
+  order-db:
     image: postgres
     environment:
-      POSTGRES_USER: paymentuser
-      POSTGRES_PASSWORD: paymentpwd
-      POSTGRES_DB: paymentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: postgres
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile-payment
+    ports:
+      - "8080:8080"
+    depends_on:
+      - payment-db
+
+  payment-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpwd
+      POSTGRES_DB: pgdb
     volumes:
       - payment-db-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - payment-db
-    restart: unless-stopped
-
-  pgadmin:
-    container_name: pgadmin
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    volumes:
-      - pgadmin:/var/lib/pgadmin
-    ports:
-      - "5050:80"
-    networks:
-      - payment-db
-    restart: unless-stopped
-
-#  customer:
-#    image: amigoscode/customer:latest
-#    container_name: customer
 #    ports:
-#      - "8080:8080"
-#    environment:
-#      - SPRING_PROFILES_ACTIVE=docker
-#    networks:
-#      - spring
-#      - payment-db
-#    depends_on:
-#      - zipkin
-#      - postgres
-#      - rabbitmq
+#      - "5432:5432"
 
-networks:
-  payment-db:
-    driver: bridge
-  spring:
-    driver: bridge
+  stock:
+    build:
+      context: .
+      dockerfile: Dockerfile-stock
+    ports:
+      - "8081:8081"
+    depends_on:
+      - stock-db
+
+  stock-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: wdm
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: stock
+    volumes:
+      - stock-db-data:/var/lib/postgresql/data
+
+# pgadmin to inspect the dbs
+#  pgadmin:
+#    container_name: pgadmin
+#    image: dpage/pgadmin4
+#    environment:
+#      PGADMIN_DEFAULT_EMAIL: admin@example.com
+#      PGADMIN_DEFAULT_PASSWORD: admin
+#      PGADMIN_CONFIG_SERVER_MODE: 'False'
+#    volumes:
+#      - pgadmin:/var/lib/pgadmin
+#    ports:
+#      - "5050:80"
+#    restart: unless-stopped
 
 volumes:
+  order-db-data:
   payment-db-data:
-  pgadmin:
+  stock-db-data:
+  #pgadmin:
