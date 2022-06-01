@@ -1,6 +1,8 @@
 zookeeper:
   enabled: false
 replicaCount: 3
+persistence:
+  size: 128Mi
 externalZookeeper:
   servers:
     myzookeeper

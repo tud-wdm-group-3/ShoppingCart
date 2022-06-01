@@ -28,6 +28,15 @@ spec:
       containers:
         - name: order
           image: order:latest
+          env:
+            - name: POSTGRES_USER
+              value: pguser
+            - name: POSTGRES_PASSWORD
+              value: pgpassword
+            - name: POSTGRES_DB
+              value: pgdb
+            - name: POSTGRES_HOST
+              value: order-db-postgresql-ha-pgpool
           imagePullPolicy: Never
           resources:
             limits:
