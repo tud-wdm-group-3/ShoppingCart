@@ -14,11 +14,13 @@ import java.util.concurrent.Future;
 public class OrderService {
     final OrderRepository repository;
 
-    TransactionHandler transactionHandler;
+    @Autowired
+    private TransactionHandler transactionHandler;
 
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
+        transactionHandler = new TransactionHandler();
     }
 
     public int createOrder(int userId){

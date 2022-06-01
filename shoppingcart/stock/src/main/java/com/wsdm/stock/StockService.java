@@ -71,10 +71,10 @@ public class StockService {
      */
 
     @Autowired
-    private KafkaTemplate<Integer, Boolean> fromStockTemplate;
+    private KafkaTemplate<Integer, Object> fromStockTemplate;
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "${myStockInstanceId}", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
     protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
         int orderId = request.key();
         int partition = orderId % Environment.numOrderInstances;
@@ -97,11 +97,11 @@ public class StockService {
             throw new IllegalStateException("An item id in the order does not exist in stock");
         }
 
-        fromStockTemplate.send("fromStockCheck", partition, orderId, enoughInStock);
+        fromStockTemplate.send("fromStockCheck", partition, orderId, Arrays.asList(orderId, enoughInStock ? 1 : 0));
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${myStockInstanceId}", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
     protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
         int orderId = request.key();
         int partition = orderId % Environment.numOrderInstances;
@@ -132,7 +132,7 @@ public class StockService {
             }
         }
 
-        fromStockTemplate.send("fromStockTransaction", partition, orderId, enoughInStock);
+        fromStockTemplate.send("fromStockTransaction", partition, orderId, Arrays.asList(orderId, enoughInStock ? 1 : 0));
     }
 
     private Map<Integer, Integer> countItems(List<Integer> items) {

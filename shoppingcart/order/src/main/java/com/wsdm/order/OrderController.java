@@ -31,8 +31,8 @@ public class OrderController {
     }
 
     @GetMapping(path = "/find/{orderId}")
-    public Order find(@PathVariable(name="orderId") int orderId) {
-        return service.findOrder(orderId).get();
+    public Optional<Order> find(@PathVariable(name="orderId") int orderId) {
+        return service.findOrder(orderId);
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")

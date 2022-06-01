@@ -10,6 +10,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 @Service
@@ -52,11 +53,11 @@ public class PaymentUserService {
 
 
     @Autowired
-    private KafkaTemplate<Integer, Boolean> fromPaymentTemplate;
+    private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
     @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${myPaymentInstanceId}", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
     protected void getPaymentTransaction(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
         int orderId = request.key();
         int userId = request.value().getFirst();
@@ -68,6 +69,6 @@ public class PaymentUserService {
             user.setCredit(credit - cost);
         }
         int partition = orderId % Environment.numOrderInstances;
-        fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, result);
+        fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, Arrays.asList(orderId, result ? 1 : 0));
     }
 }

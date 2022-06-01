@@ -4,15 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class Environment {
 
-    @Value("${numStockInstances}")
-    public static int numStockInstances;
+    public static int numStockInstances = 1;
 
-    @Value("${numPaymentInstances}")
-    public static int numPaymentInstances;
+    public static int numPaymentInstances = 1;
 
-    @Value("${numOrderInstances}")
-    public static int numOrderInstances;
+    public static int numOrderInstances = 1;
 
-    @Value("${myOrderInstanceId}")
-    public static int myOrderInstanceId;
+    public static int myOrderInstanceId = 0;
 }

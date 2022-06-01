@@ -7,23 +7,19 @@ import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+@Service
 public class TransactionHandler {
 
-    private Map<Integer, Order> currentOrders;
-    private Map<Integer, Map<String, Object>> stockChecks;
-    private Map<Integer, Map<String, Object>> stockChecks;
+    private Map<Integer, Order> currentOrders = new HashMap<>();
+    private Map<Integer, Map<String, Object>> stockChecks = new HashMap<>();
 
-    public TransactionHandler() {
-        this.currentOrders = new HashMap<>();
-        this.stockChecks = new HashMap<>();
-    }
+    @Autowired
+    private KafkaTemplate<Integer, Object> kafkaTemplate;
 
     public boolean startCheckout(Order order) {
         sendStockCheck(order);
@@ -35,10 +31,9 @@ public class TransactionHandler {
      * The functions below are in chronological order of processing for one order.
      */
 
-    @Autowired
-    private KafkaTemplate<Integer, List<Integer>> toStockTemplate;
-
     public void sendStockCheck(Order order) {
+        System.out.println("sending stock check");
+
         // STEP 1: SEND STOCK CHECK
         Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
 
@@ -49,69 +44,73 @@ public class TransactionHandler {
         stockChecks.put(order.getOrderId(), log);
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-            toStockTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
+            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
     }
 
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
-    public void getStockCheckResponse(Pair<Integer, Boolean> orderResultPair) {
-        // STEP 2: RECEIVE RESPONSE FROM STOCK CHECK
-        Map<String, Object> log = stockChecks.get(orderResultPair.getFirst());
-        if (!(boolean) log.get("flag") || !processResponse(orderResultPair)){
+                    partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+    public void getStockCheckResponse(List<Integer> stockResponse) {
+        System.out.println("got stock response");
+
+        Map<String, Object> log = stockChecks.get(stockResponse.get(0));
+        if ((int) log.get("flag") != 1 || !processResponse(stockResponse)){
             // TODO: failed
         } else {
             log.put("count", (int) log.get("count") + 1);
-            log.put("flag", orderResultPair.getSecond());
-            stockChecks.put(orderResultPair.getFirst(), log);
+            log.put("flag", stockResponse.get(1) == 1);
+            stockChecks.put(stockResponse.get(0), log);
 
             if (log.get("count") == log.get("total") && (boolean) log.get("flag")){
                 // Remove it from the log since check is completed
-                stockChecks.remove(orderResultPair.getFirst());
-                sendPaymentTransaction(currentOrders.get(orderResultPair.getFirst()));
+                stockChecks.remove(stockResponse.get(0));
+                sendPaymentTransaction(currentOrders.get(stockChecks.get(0)));
             }
         }
     }
 
-    @Autowired
-    private KafkaTemplate<Integer, Pair<Integer, Integer>> toPaymentTemplate;
-
     private void sendPaymentTransaction(Order order) {
-        // STEP 3: START PAYMENT TRANSACTION
-        int orderId = order.getOrderId();
-        int userId = order.getUserId();
-        int totalCost = order.getTotalCost();
-        int partition = getPartition(userId, Environment.numPaymentInstances);
-        Pair<Integer, Integer> userAndPrice = Pair.of(userId, totalCost);
+        System.out.println("sending payment check");
 
-        toPaymentTemplate.send("toPaymentTransaction", partition, orderId, userAndPrice);
+        // STEP 3: START PAYMENT TRANSACTION
+        int userId = order.getUserId();
+        int partition = getPartition(userId, Environment.numPaymentInstances);
+        List<Integer> data = Arrays.asList(userId, order.getTotalCost());
+
+        kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${myOrderInstanceId}", initialOffset = "0")}))
-    private void getPaymentResponse(Pair<Integer, Boolean> orderResultPair) {
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+    private void getPaymentResponse(List<Integer> paymentResponse) {
+        System.out.println("get payment response");
+
         // STEP 4: RECEIVE RESPONSE FROM PAYMENT TRANSACTION
-        if (processResponse(orderResultPair)) {
-            sendStockTransaction(currentOrders.get(orderResultPair.getFirst()));
+        if (processResponse(paymentResponse)) {
+            sendStockTransaction(currentOrders.get(paymentResponse.get(0)));
         } else {
             // TODO: failed
         }
     }
 
     private void sendStockTransaction(Order order) {
+        System.out.println("sending stock transaction");
+
         // STEP 5: START STOCK TRANSACTION
         Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-                toStockTemplate.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
+            kafkaTemplate.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "#{myOrderInstanceId}", initialOffset = "0")}))
-    private void getStockTransactionResponse(Pair<Integer, Boolean> orderResultPair) {
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+    private void getStockTransactionResponse(List<Integer> response) {
+        System.out.println("received stock transaction response");
+
         // STEP 6: RECEIVE RESPONSE FROM STOCK TRANSACTION
-        if (processResponse(orderResultPair)) {
+        if (processResponse(response)) {
             // TODO: now we are done
         } else {
             // TODO: failed
@@ -121,15 +120,15 @@ public class TransactionHandler {
 
     /** Helper functions */
 
-    private boolean processResponse(Pair<Integer, Boolean> orderResultPair) {
-        int orderId = orderResultPair.getFirst();
-        boolean result = orderResultPair.getSecond();
+    private boolean processResponse(List<Integer> response) {
+        int orderId = response.get(0);
+        int result = response.get(1);
 
         if (!currentOrders.containsKey(orderId)) {
             throw new IllegalArgumentException("Received response to order not in transaction.");
         }
 
-        return result;
+        return result == 1;
     }
 
     private int getPartition(int id, int numInstances) {
