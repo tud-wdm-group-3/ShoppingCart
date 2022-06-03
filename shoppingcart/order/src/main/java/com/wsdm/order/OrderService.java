@@ -2,6 +2,7 @@ package com.wsdm.order;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -29,26 +30,26 @@ public class OrderService {
     public int createOrder(int userId){
         Order order=new Order();
         order.setUserId(userId);
-
-        // Convert local to global id
         repository.save(order);
-        int globalId = order.getOrderId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
+
+        int globalId = order.getLocalId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
         order.setOrderId(globalId);
-        repository.save(order);
 
-        return order.getOrderId();
+        return globalId;
     }
 
     public void deleteOrder(int orderId){
-        repository.findById(orderId).ifPresent(repository::delete);
+        findOrder(orderId).ifPresent(repository::delete);
     }
 
     public Optional<Order> findOrder(int orderId){
-        return repository.findById(orderId);
+        // Convert to local id
+        int localId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
+        return repository.findById(localId);
     }
 
-    public void addItemToOrder(int orderId,int itemId){
-        Optional<Order> res = repository.findById(orderId);
+    public void addItemToOrder(int orderId, int itemId){
+        Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
             List<Integer> items = order.getItems();

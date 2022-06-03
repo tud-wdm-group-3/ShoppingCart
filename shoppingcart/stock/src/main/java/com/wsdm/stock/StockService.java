@@ -20,17 +20,36 @@ public class StockService {
         this.stockRepository = stockRepository;
     }
 
-    public Optional<Stock> findStock(int itemId) {
-        return stockRepository.findById(itemId);
+    public int createItem(double price) {
+        Stock stock = new Stock(price);
+        stock.setPrice(price);
+
+        // Convert local to global id
+        stockRepository.save(stock);
+        int globalId = stock.getLocalId() * Environment.numOrderInstances + Environment.myStockInstanceId;
+        stock.setItemId(globalId);
+        stockRepository.save(stock);
+
+        return globalId;
     }
 
-    public List<Stock> findStocks(List<Integer> item_ids) {
-        List<Stock> res = stockRepository.findAllById(item_ids);
+    public Optional<Stock> findItem(int itemId) {
+        int localId = (itemId - Environment.myStockInstanceId) / Environment.numStockInstances;
+        return stockRepository.findById(localId);
+    }
+
+    public List<Stock> findItems(List<Integer> itemIds) {
+        for (int i = 0; i < itemIds.size(); i++) {
+            int itemId = itemIds.get(i);
+            int localId = (itemId - Environment.myStockInstanceId) / Environment.numStockInstances;
+            itemIds.set(i, localId);
+        }
+        List<Stock> res = stockRepository.findAllById(itemIds);
         return res;
     }
 
     public boolean addStock(int itemId, int amount) {
-        Optional<Stock> res = stockRepository.findById(itemId);
+        Optional<Stock> res = findItem(itemId);
         if(res.isPresent()) {
             Stock stock = res.get();
             stock.setAmount(stock.getAmount()+amount);
@@ -41,7 +60,7 @@ public class StockService {
     }
 
     public boolean subtractStock(int itemId, int amount) {
-        Optional<Stock> res = stockRepository.findById(itemId);
+        Optional<Stock> res = findItem(itemId);
         if(res.isPresent()) {
             Stock stock = res.get();
             if (stock.getAmount() >= amount) {
@@ -51,19 +70,6 @@ public class StockService {
             }
         }
         return false;
-    }
-
-    public Stock addItem(double price) {
-        Stock stock = new Stock(price);
-        stock.setPrice(price);
-
-        // Convert local to global id
-        stockRepository.save(stock);
-        int globalId = stock.getItemId() * Environment.numOrderInstances + Environment.myStockInstanceId;
-        stock.setItemId(globalId);
-        stockRepository.save(stock);
-
-        return stock;
     }
 
     /**
@@ -82,7 +88,7 @@ public class StockService {
         // Count items
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
-        List<Stock> stocks = findStocks(ids);
+        List<Stock> stocks = findItems(ids);
 
         boolean enoughInStock = true;
         if (stocks.size() == ids.size()){

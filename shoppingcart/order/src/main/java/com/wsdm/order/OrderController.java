@@ -18,11 +18,10 @@ public class OrderController {
 
     @Autowired
     OrderService service;
+    
     @PostMapping(path = "/create/{userId}")
-    public Map<String,String> create(@PathVariable(name="userId") int userId) {
-        HashMap<String,String> output=new HashMap<>();
-        output.put("orderId",Integer.toString(service.createOrder(userId)));
-        return output;
+    public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
+        return Map.of("order_id", service.createOrder(userId));
     }
 
     @DeleteMapping(path = "/remove/{orderId}")

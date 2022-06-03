@@ -16,6 +16,8 @@ public class Stock {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer localId;
+
     private Integer itemId;
     private Integer amount;
     private Double price;

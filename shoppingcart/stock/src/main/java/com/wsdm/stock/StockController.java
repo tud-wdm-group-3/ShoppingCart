@@ -14,8 +14,8 @@ import java.util.Optional;
 public record StockController(StockService stockService) {
 
     @GetMapping(path="/find/{item_id}")
-    public HashMap<String, String> findStock(@PathVariable(name="item_id") int item_id){
-        Optional<Stock> stock = stockService.findStock(item_id);
+    public HashMap<String, String> findItem(@PathVariable(name="item_id") int item_id){
+        Optional<Stock> stock = stockService.findItem(item_id);
         HashMap<String,String> res =new HashMap<>();
         if (stock.isPresent()){
             res.put("amount", stock.get().getAmount().toString());
@@ -45,12 +45,9 @@ public record StockController(StockService stockService) {
     }
 
     @PostMapping(path="/item/create/{price}")
-    public HashMap<String, String> addItem(@PathVariable(name="price") double price) {
-        Stock stock = stockService.addItem(price);
-        HashMap<String, String> res = new HashMap<String, String>();
-        res.put("item_id", stock.getItemId().toString());
-
-        return res;
+    public Map<String, Integer> addItem(@PathVariable(name="price") double price) {
+        int itemId = stockService.createItem(price);
+        return Map.of("item_id", itemId);
     }
 
 

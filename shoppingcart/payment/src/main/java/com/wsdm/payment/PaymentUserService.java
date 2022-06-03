@@ -31,19 +31,20 @@ public class PaymentUserService {
 
         // Convert local to global id
         paymentUserRepository.save(paymentUser);
-        int globalId = paymentUser.getId() * Environment.numOrderInstances + Environment.myPaymentInstanceId;
-        paymentUser.setId(globalId);
+        int globalId = paymentUser.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
+        paymentUser.setUserId(globalId);
         paymentUserRepository.save(paymentUser);
 
-        return paymentUser.getId();
+        return globalId;
     }
 
     public Optional<PaymentUser> findUser(Integer userId) {
-        return paymentUserRepository.findById(userId);
+        int localId = (userId - Environment.myPaymentInstanceId) / Environment.numPaymentInstances;
+        return paymentUserRepository.findById(localId);
     }
 
     public boolean addFunds(Integer userId, Integer amount) {
-        Optional<PaymentUser> optPaymentUser = paymentUserRepository.findById(userId);
+        Optional<PaymentUser> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }

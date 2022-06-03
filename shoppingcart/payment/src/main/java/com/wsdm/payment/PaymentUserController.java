@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -15,9 +16,9 @@ public class PaymentUserController extends KafkaSubscriber {
     PaymentUserService paymentUserService;
 
     @PostMapping(path="create_user")
-    public Integer registerUser() {
+    public Map<String, Integer> registerUser() {
         // TODO: return JSON instead of just a single int
-        return paymentUserService.registerUser();
+        return Map.of("user_id", paymentUserService.registerUser());
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")

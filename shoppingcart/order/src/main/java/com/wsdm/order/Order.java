@@ -15,8 +15,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int localId;
+
     private int orderId;
     private boolean paid;
     @ElementCollection

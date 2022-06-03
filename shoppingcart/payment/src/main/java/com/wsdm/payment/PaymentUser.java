@@ -16,6 +16,8 @@ public class PaymentUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Integer localId;
+
+    private Integer userId;
     private Integer credit;
 }
