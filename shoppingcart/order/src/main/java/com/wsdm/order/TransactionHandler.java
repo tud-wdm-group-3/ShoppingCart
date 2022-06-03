@@ -1,8 +1,6 @@
 package com.wsdm.order;
 
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -39,6 +37,12 @@ public class TransactionHandler {
 
     @Autowired
     private KafkaTemplate<Integer, Object> kafkaTemplate;
+
+    final private OrderRepository orderRepository;
+
+    public TransactionHandler(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
         pendingResponses.put(order.getOrderId(), response);
@@ -206,7 +210,9 @@ public class TransactionHandler {
     }
 
     private void transactionSucceeded(int orderId) {
-        currentOrders.remove(orderId);
+        Order order = currentOrders.remove(orderId);
+        order.setPaid(true);
+        orderRepository.save(order);
         pendingResponses.get(orderId).setResult(ResponseEntity.ok().build());
     }
 

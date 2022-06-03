@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 
 @Service
 public class OrderService {
+
     final OrderRepository repository;
 
     @Autowired
@@ -22,7 +23,7 @@ public class OrderService {
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
-        transactionHandler = new TransactionHandler();
+        transactionHandler = new TransactionHandler(repository);
     }
 
     public int createOrder(int userId){
