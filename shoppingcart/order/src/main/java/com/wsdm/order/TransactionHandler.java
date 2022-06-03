@@ -49,7 +49,7 @@ public class TransactionHandler {
 
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
-                    partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+                    partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Pair<Integer, Boolean> stockResponse) {
         System.out.println("got stock response");
 
@@ -81,7 +81,7 @@ public class TransactionHandler {
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     private void getPaymentResponse(Pair<Integer, Boolean> paymentResponse) {
         System.out.println("get payment response");
 
@@ -111,7 +111,7 @@ public class TransactionHandler {
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Pair<Integer, AbstractMap.SimpleEntry<Integer, Boolean>> response) {
         System.out.println("received stock transaction response");
         Map<String, Object> log = new HashMap<>(transactionLog.get(response.getFirst()));

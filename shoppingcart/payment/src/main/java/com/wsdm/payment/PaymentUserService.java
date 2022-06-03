@@ -57,7 +57,7 @@ public class PaymentUserService {
 
     @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
         int orderId = request.key();
         int userId = request.value().getFirst();
@@ -74,7 +74,7 @@ public class PaymentUserService {
 
     @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
         int userId = request.value().getFirst();
         int refund = request.value().getSecond();
