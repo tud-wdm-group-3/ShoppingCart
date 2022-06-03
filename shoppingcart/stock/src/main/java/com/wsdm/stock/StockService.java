@@ -104,35 +104,51 @@ public class StockService {
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
     protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
         int orderId = request.key();
-        int partition = orderId % Environment.numOrderInstances;
+        int orderPartition = orderId % Environment.numOrderInstances;
 
         // Count items
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
-        List<Stock> stocks = findStocks(ids);
 
-        // Check if still enough of everything
-        // this prevents having to do rollbacks internally
-        // No reason to check if an item id is wrong at this point
-        boolean enoughInStock = true;
-        for (Stock stock : stocks){
-            int required = itemIdToAmount.get(stock.getItemId());
-            enoughInStock = enoughInStock && stock.getAmount() >= required;
-            if (!enoughInStock) {
+        int curPartition = ids.get(0) % Environment.numStockInstances;
+
+        // subtract amounts from stock
+        int curId = -1;
+        for (int id : ids) {
+            int required = itemIdToAmount.get(id);
+            // For rollbacks in case individual item no longer available
+            if (!subtractStock(id, required)) {
+                curId = id;
                 break;
             }
         }
 
-        // subtract amounts from stock
-        if (enoughInStock) {
-            for (Stock stock : stocks) {
-                int amountInStock = stock.getAmount();
-                int required = itemIdToAmount.get(stock.getItemId());
-                stock.setAmount(amountInStock - required);
+        // Rollback
+        if (curId != -1){
+            for (int id : ids){
+                if (id == curId) break;
+                int required = itemIdToAmount.get(id);
+                addStock(id, required);
             }
         }
 
-        fromStockTemplate.send("fromStockTransaction", partition, orderId, Arrays.asList(orderId, enoughInStock ? 1 : 0));
+
+        AbstractMap.SimpleEntry<Integer, Boolean> res = new AbstractMap.SimpleEntry<>(curPartition, curId==-1);
+        fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, res);
+    }
+
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockRollback",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+    protected void getStockRollback(ConsumerRecord<Integer, List<Integer>> request) {
+        // Count items
+        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+
+        // Rollback amounts to stock
+        for (int id : ids) {
+            int returned = itemIdToAmount.get(id);
+            addStock(id, returned);
+        }
     }
 
     private Map<Integer, Integer> countItems(List<Integer> items) {

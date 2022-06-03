@@ -71,4 +71,16 @@ public class PaymentUserService {
         int partition = orderId % Environment.numOrderInstances;
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, Arrays.asList(orderId, result ? 1 : 0));
     }
+
+    @Transactional
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0")}))
+    protected void getPaymentRollback(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
+        int userId = request.value().getFirst();
+        int refund = request.value().getSecond();
+        PaymentUser user = paymentUserRepository.getById(userId);
+        int credit = user.getCredit();
+        // TODO: call make payment
+        user.setCredit(credit + refund);
+    }
 }
