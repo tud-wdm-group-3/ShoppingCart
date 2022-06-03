@@ -10,7 +10,7 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("payment")
-public class PaymentUserController extends KafkaSubscriber {
+public class PaymentUserController {
 
     @Autowired
     PaymentUserService paymentUserService;
