@@ -4,4 +4,4 @@ spring:
 server:
   port: 8081
   servlet:
-    context-path: /order
+    context-path: /orders
