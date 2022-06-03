@@ -1,0 +1,9 @@
+global:
+  postgresql:
+    username: pguser
+    password: pgpassword
+    database: pgdb
+postgresql:
+  replicaCount: 2
+persistence:
+  size: 128Mi
