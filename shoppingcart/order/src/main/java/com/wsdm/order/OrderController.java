@@ -8,6 +8,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.*;
 
@@ -50,17 +51,15 @@ public class OrderController {
     }
 
     @PostMapping(path = "/checkout/{orderId}")
-    public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
+    public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
         Optional<Order> order = service.findOrder(orderId);
+        DeferredResult<ResponseEntity> response = new DeferredResult<>();
         if (!order.isPresent()) {
-            return ResponseEntity.notFound().build();
+            response.setResult(ResponseEntity.notFound().build());
+            return response;
         } else {
-            boolean result = service.checkout(order.get());
-            if (result) {
-                return ResponseEntity.ok().build();
-            } else {
-                return ResponseEntity.internalServerError().build();
-            }
+            service.checkout(order.get(), response);
+            return response;
         }
     }
 }

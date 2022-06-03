@@ -2,7 +2,9 @@ package com.wsdm.order;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.async.DeferredResult;
 
 
 import java.util.List;
@@ -68,8 +70,7 @@ public class OrderService {
         }
     }
 
-    public boolean checkout(Order order){
-        boolean result = transactionHandler.startCheckout(order);
-        return true; // TODO: How to do this non-blocking?
+    public void checkout(Order order, DeferredResult<ResponseEntity> response){
+        transactionHandler.startCheckout(order, response);
     }
 }

@@ -97,7 +97,8 @@ public class StockService {
             throw new IllegalStateException("An item id in the order does not exist in stock");
         }
 
-        fromStockTemplate.send("fromStockCheck", partition, orderId, Arrays.asList(orderId, enoughInStock ? 1 : 0));
+        Map<String, Object> data = Map.of("orderId", orderId, "enoughInStock", enoughInStock);
+        fromStockTemplate.send("fromStockCheck", partition, orderId, data);
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
@@ -110,8 +111,6 @@ public class StockService {
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
 
-        int curPartition = ids.get(0) % Environment.numStockInstances;
-
         // subtract amounts from stock
         int curId = -1;
         for (int id : ids) {
@@ -123,7 +122,7 @@ public class StockService {
             }
         }
 
-        // Rollback
+        // Internal rollback
         if (curId != -1){
             for (int id : ids){
                 if (id == curId) break;
@@ -132,9 +131,9 @@ public class StockService {
             }
         }
 
-
-        AbstractMap.SimpleEntry<Integer, Boolean> res = new AbstractMap.SimpleEntry<>(curPartition, curId==-1);
-        fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, res);
+        boolean enoughInStock = curId == -1;
+        Map<String, Object> data = Map.of("orderId", orderId, "stockId", Environment.myStockInstanceId, "enoughInStock", enoughInStock);
+        fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, data);
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockRollback",

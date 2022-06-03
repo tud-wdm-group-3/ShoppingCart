@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -41,13 +42,14 @@ public class PaymentUserService {
         return paymentUserRepository.findById(userId);
     }
 
-    @Transactional
     public boolean addFunds(Integer userId, Integer amount) {
-        Optional<PaymentUser> paymentUser = paymentUserRepository.findById(userId);
-        if (paymentUser.isEmpty()) {
+        Optional<PaymentUser> optPaymentUser = paymentUserRepository.findById(userId);
+        if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
-        paymentUser.get().setCredit(paymentUser.get().getCredit() + amount);
+        PaymentUser paymentUser = optPaymentUser.get();
+        paymentUser.setCredit(paymentUser.getCredit() + amount);
+        paymentUserRepository.save(paymentUser);
         return true;  // TODO return false when fail for some reason
     }
 
@@ -55,29 +57,38 @@ public class PaymentUserService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
-    @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getPaymentTransaction(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
+    protected void getPaymentTransaction(ConsumerRecord<Integer, Map<String, Object>> request) {
         int orderId = request.key();
-        int userId = request.value().getFirst();
-        int cost = request.value().getSecond();
-        PaymentUser user = paymentUserRepository.getById(userId);
-        int credit = user.getCredit();
-        boolean result = credit >= cost;
-        if (result) {
-            user.setCredit(credit - cost);
+        int userId = (int) request.value().get("userId");
+        int cost = (int) request.value().get("totalCost");
+        System.out.println(request.value());
+        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        if (!optPaymentUser.isPresent()) {
+            throw new IllegalStateException("unknown user");
         }
+        PaymentUser paymentUser = optPaymentUser.get();
+        System.out.println(paymentUser);
+        int credit = paymentUser.getCredit();
+        boolean enoughCredit = credit >= cost;
+        if (enoughCredit) {
+            System.out.println("enough");
+            paymentUser.setCredit(credit - cost);
+            paymentUserRepository.save(paymentUser);
+        }
+        System.out.println(paymentUser);
         int partition = orderId % Environment.numOrderInstances;
-        fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, Arrays.asList(orderId, result ? 1 : 0));
+        Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
+        fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
     @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getPaymentRollback(ConsumerRecord<Integer, Pair<Integer, Integer>> request) {
-        int userId = request.value().getFirst();
-        int refund = request.value().getSecond();
+    protected void getPaymentRollback(ConsumerRecord<Integer, Map<String, Object>> request) {
+        int userId = (int) request.value().get("userId");
+        int refund = (int) request.value().get("refund");
         PaymentUser user = paymentUserRepository.getById(userId);
         int credit = user.getCredit();
         // TODO: call make payment
