@@ -3,12 +3,7 @@ server:
 spring:
   application:
     name: stock
-  datasource:
-    password: password
-    url: jdbc:postgresql://localhost:5432/stock
-    username: wdm
   jpa:
-
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
