@@ -15,14 +15,9 @@ import javax.persistence.*;
 public class PaymentUser {
 
     @Id
-    @SequenceGenerator(
-            name="user_id_sequence",
-            sequenceName="user_id_sequence"
-    )
-    @GeneratedValue(
-            strategy = GenerationType.SEQUENCE,
-            generator = "user_id_sequence"
-    )
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer localId;
+
+    private Integer userId;
     private Integer credit;
 }

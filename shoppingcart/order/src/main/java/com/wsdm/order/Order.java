@@ -15,20 +15,23 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int order_id;
+    private int localId;
+
+    private int orderId;
     private boolean paid;
     @ElementCollection
     private List<Integer> items;
-    private int user_id;
-    private int total_cost;
+    private int userId;
+    private int totalCost;
 
-    public Order(int user_id)
+    public Order(int userId)
     {
         paid=false;
         items=new ArrayList<>();
-        user_id=user_id;
-        total_cost=0;
+        userId=userId;
+        totalCost=0;
     }
 }
