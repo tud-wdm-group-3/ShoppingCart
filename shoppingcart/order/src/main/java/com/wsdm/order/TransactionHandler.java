@@ -83,8 +83,11 @@ public class TransactionHandler {
         int orderId = (int) stockResponse.get("orderId");
         boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
 
-        // Get current order log
+        // Get current order stock check log
         Map<String, Object> curOrderLog = new HashMap<>(stockCheckLog.get(orderId));
+
+        // Get current order
+        Order curOrder = currentOrders.get(orderId);
 
         boolean prevEnoughInStock = (boolean) curOrderLog.get("flag");
 
@@ -101,8 +104,10 @@ public class TransactionHandler {
             // Remove it from the log since check is completed
             stockCheckLog.remove(orderId);
             boolean enoughInAllStock = prevEnoughInStock && enoughInStock;
-            if (enoughInAllStock) {
+            if (enoughInAllStock && !curOrder.isPaid()) {
                 sendPaymentTransaction(currentOrders.get(orderId));
+            } else if (enoughInAllStock){
+                sendStockTransaction(curOrder);
             }
         }
     }
@@ -127,6 +132,7 @@ public class TransactionHandler {
 
         // STEP 4: RECEIVE RESPONSE FROM PAYMENT TRANSACTION
         if (enoughCredit) {
+            currentOrders.get(orderId).setPaid(true);
             sendStockTransaction(currentOrders.get(orderId));
         } else {
             transactionFailed(orderId);
@@ -149,6 +155,19 @@ public class TransactionHandler {
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             kafkaTemplate.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
         }
+    }
+
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentUpdate",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+    private void getPaymentUpdate(Integer orderId) {
+        int localOrderId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
+        Optional<Order> optOrder = orderRepository.findById(localOrderId);
+        if (optOrder.isEmpty()) {
+            throw new IllegalStateException("Order with Id " + orderId + " does not exist");
+        }
+        Order order = optOrder.get();
+        order.setPaid(true);
+        orderRepository.save(order);
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
@@ -185,6 +204,19 @@ public class TransactionHandler {
         }
     }
 
+    public void sendOrderExists(int orderId, int method) {
+        Optional<Order> optOrder = orderRepository.findById(orderId);
+        if (optOrder.isEmpty()) {
+            throw new IllegalStateException("Order with Id " + orderId + " does not exist");
+        }
+        Order order = optOrder.get();
+
+        int userId = order.getUserId();
+        int partition = getPartition(userId, Environment.numPaymentInstances);
+
+        Map<String, Integer> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
+        kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), reqValue);
+    }
 
     private void sendStockRollback(Order order, Map<Integer, Boolean> confirmations) {
         Map<Integer, List<Integer>> stockPartition = getPartition(order.getItems(), Environment.numStockInstances);
