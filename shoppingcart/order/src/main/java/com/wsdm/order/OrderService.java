@@ -35,11 +35,20 @@ public class OrderService {
         int globalId = order.getLocalId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
         order.setOrderId(globalId);
 
+        transactionHandler.sendOrderExists(globalId, 0);
+
         return globalId;
     }
 
-    public void deleteOrder(int orderId){
-        findOrder(orderId).ifPresent(repository::delete);
+    public boolean deleteOrder(int orderId){
+        transactionHandler.sendOrderExists(orderId, 1);
+        Optional<Order> optOrder = findOrder(orderId);
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            repository.delete(order);
+            return true;
+        }
+        return false;
     }
 
     public Optional<Order> findOrder(int orderId){
@@ -48,28 +57,36 @@ public class OrderService {
         return repository.findById(localId);
     }
 
-    public void addItemToOrder(int orderId, int itemId){
+    public boolean addItemToOrder(int orderId, int itemId){
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (!items.contains(itemId)) {
-                items.add(itemId);
-                repository.save(order);
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
+                if (!items.contains(itemId)) {
+                    items.add(itemId);
+                    repository.save(order);
+                    return true;
+                }
             }
         }
+        return false;
     }
 
-    public void removeItemFromOrder(int orderId,int itemId){
+    public boolean removeItemFromOrder(int orderId,int itemId){
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (items.contains(itemId)) {
-                items.remove(itemId);
-                repository.save(order);
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
+                if (items.contains(itemId)) {
+                    items.remove(itemId);
+                    repository.save(order);
+                    return true;
+                }
             }
         }
+        return false;
     }
 
     public void checkout(Order order, DeferredResult<ResponseEntity> response){
