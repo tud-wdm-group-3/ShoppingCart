@@ -10,24 +10,24 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("payment")
-public class PaymentUserController {
+public class PaymentController {
 
     @Autowired
-    PaymentUserService paymentUserService;
+    PaymentService paymentService;
 
     @PostMapping(path="create_user")
     public Map<String, Integer> registerUser() {
         // TODO: return JSON instead of just a single int
-        return Map.of("user_id", paymentUserService.registerUser());
+        return Map.of("user_id", paymentService.registerUser());
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
     public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
-        return paymentUserService.addFunds(userId, amount);
+        return paymentService.addFunds(userId, amount);
     }
 
     @GetMapping(path="find_user/{user_id}")
-    public Optional<PaymentUser> findUser(@PathVariable("user_id") Integer userId) {
-        return paymentUserService.findUser(userId);
+    public Optional<Payment> findUser(@PathVariable("user_id") Integer userId) {
+        return paymentService.findUser(userId);
     }
 }
