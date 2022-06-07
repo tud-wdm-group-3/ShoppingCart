@@ -2,7 +2,6 @@ package com.wsdm.payment;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
@@ -10,47 +9,46 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
-public class PaymentUserService {
+public class PaymentService {
 
-    private final PaymentUserRepository paymentUserRepository;
+    private final PaymentRepository paymentRepository;
 
     @Autowired
-    public PaymentUserService(PaymentUserRepository paymentUserRepository) {
-        this.paymentUserRepository = paymentUserRepository;
+    public PaymentService(PaymentRepository paymentRepository) {
+        this.paymentRepository = paymentRepository;
     }
 
     public Integer registerUser() {
-        PaymentUser paymentUser = PaymentUser.builder()
+        Payment payment = Payment.builder()
                 .credit(0)
                 .build();
 
         // Convert local to global id
-        paymentUserRepository.save(paymentUser);
-        int globalId = paymentUser.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
-        paymentUser.setUserId(globalId);
-        paymentUserRepository.save(paymentUser);
+        paymentRepository.save(payment);
+        int globalId = payment.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
+        payment.setUserId(globalId);
+        paymentRepository.save(payment);
 
         return globalId;
     }
 
-    public Optional<PaymentUser> findUser(Integer userId) {
+    public Optional<Payment> findUser(Integer userId) {
         int localId = (userId - Environment.myPaymentInstanceId) / Environment.numPaymentInstances;
-        return paymentUserRepository.findById(localId);
+        return paymentRepository.findById(localId);
     }
 
     public boolean addFunds(Integer userId, Integer amount) {
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
-        PaymentUser paymentUser = optPaymentUser.get();
-        paymentUser.setCredit(paymentUser.getCredit() + amount);
-        paymentUserRepository.save(paymentUser);
+        Payment payment = optPaymentUser.get();
+        payment.setCredit(payment.getCredit() + amount);
+        paymentRepository.save(payment);
         return true;  // TODO return false when fail for some reason
     }
 
@@ -65,20 +63,20 @@ public class PaymentUserService {
         int userId = (int) request.value().get("userId");
         int cost = (int) request.value().get("totalCost");
         System.out.println(request.value());
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
-        if (!optPaymentUser.isPresent()) {
+        Optional<Payment> optPayment = findUser(userId);
+        if (!optPayment.isPresent()) {
             throw new IllegalStateException("unknown user");
         }
-        PaymentUser paymentUser = optPaymentUser.get();
-        System.out.println(paymentUser);
-        int credit = paymentUser.getCredit();
+        Payment payment = optPayment.get();
+        System.out.println(payment);
+        int credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
         if (enoughCredit) {
             System.out.println("enough");
-            paymentUser.setCredit(credit - cost);
-            paymentUserRepository.save(paymentUser);
+            payment.setCredit(credit - cost);
+            paymentRepository.save(payment);
         }
-        System.out.println(paymentUser);
+        System.out.println(payment);
         int partition = orderId % Environment.numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
@@ -90,7 +88,7 @@ public class PaymentUserService {
     protected void getPaymentRollback(ConsumerRecord<Integer, Map<String, Object>> request) {
         int userId = (int) request.value().get("userId");
         int refund = (int) request.value().get("refund");
-        PaymentUser user = paymentUserRepository.getById(userId);
+        Payment user = paymentRepository.getById(userId);
         int credit = user.getCredit();
         // TODO: call make payment
         user.setCredit(credit + refund);
