@@ -3,6 +3,11 @@ global:
     username: pguser
     password: pgpassword
     database: pgdb
+    repmgrUsername: repmgr
+    repmgrPassword: repmgr
+    repmgrDatabase: repmgr
+pgpool:
+  replicaCount: 2
 postgresql:
   replicaCount: 2
 persistence:
