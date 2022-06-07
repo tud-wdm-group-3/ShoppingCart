@@ -7,27 +7,27 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Service
-public class PaymentUserService {
+public class PaymentService {
 
-    private final PaymentUserRepository paymentUserRepository;
+    private final PaymentRepository paymentRepository;
 
     @Autowired
-    public PaymentUserService(PaymentUserRepository paymentUserRepository) {
-        this.paymentUserRepository = paymentUserRepository;
+    public PaymentService(PaymentRepository paymentRepository) {
+        this.paymentRepository = paymentRepository;
     }
 
     public Integer registerUser() {
-        PaymentUser paymentUser = PaymentUser.builder()
+        Payment payment = Payment.builder()
                 .credit(0)
                 .build();
-        paymentUserRepository.save(paymentUser);
-        return paymentUser.getId();
+        paymentRepository.save(payment);
+        return payment.getId();
     }
 
-    public PaymentUser findUser(Integer userId) {
-        PaymentUser paymentUser = paymentUserRepository.findById(userId)
+    public Payment findUser(Integer userId) {
+        Payment payment = paymentRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("user with Id " + userId + " does not exist"));
-        return paymentUser;
+        return payment;
 //        Optional<PaymentUser> paymentUser = paymentUserRepository.findById(userId);
 //        if (paymentUser.isPresent()) {
 //            System.out.println("asdf");
@@ -37,7 +37,7 @@ public class PaymentUserService {
 
     @Transactional
     public boolean addFunds(Integer userId, Integer amount) {
-        Optional<PaymentUser> paymentUser = paymentUserRepository.findById(userId);
+        Optional<Payment> paymentUser = paymentRepository.findById(userId);
         if (paymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
