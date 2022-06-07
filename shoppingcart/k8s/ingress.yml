@@ -13,20 +13,20 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: order-service
+              name: order-0    # TODO: connect to wrapper
               port:
                 number: 8080
         - path: /stock/?(.*)
           pathType: Prefix
           backend:
             service:
-              name: stock-service
+              name: stock-0    # TODO: connect to wrapper
               port:
                 number: 8080
         - path: /payment/?(.*)
           pathType: Prefix
           backend:
             service:
-              name: user-service
+              name: payment-0  # TODO: connect to wrapper
               port:
                 number: 8080

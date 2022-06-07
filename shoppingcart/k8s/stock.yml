@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: stock-service
+  name: stock-0
 spec:
   type: ClusterIP
   selector:
-    component: stock
+    component: stock-0
   ports:
     - port: 8080
       name: http
@@ -14,19 +14,19 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: stock-deployment
+  name: stock-0
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      component: stock
+      component: stock-0
   template:
     metadata:
       labels:
-        component: stock
+        component: stock-0
     spec:
       containers:
-        - name: stock
+        - name: stock-0
           image: stock:latest
           env:
             - name: POSTGRES_USER
@@ -36,7 +36,61 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: stock-db-postgresql-ha-pgpool
+              value: stock-0-db-postgresql-ha-pgpool
+            - name: SERVICE_PORT
+              value: "8080"
+          imagePullPolicy: Never
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+            requests:
+              memory: "1Gi"
+              cpu: "1"
+          command: ["java"]
+          args: ["-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stock-1
+spec:
+  type: ClusterIP
+  selector:
+    component: stock-1
+  ports:
+    - port: 8080
+      name: http
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: stock-1
+  template:
+    metadata:
+      labels:
+        component: stock-1
+    spec:
+      containers:
+        - name: stock-1
+          image: stock:latest
+          env:
+            - name: POSTGRES_USER
+              value: pguser
+            - name: POSTGRES_PASSWORD
+              value: pgpassword
+            - name: POSTGRES_DB
+              value: pgdb
+            - name: POSTGRES_HOST
+              value: stock-1-db-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
           imagePullPolicy: Never
