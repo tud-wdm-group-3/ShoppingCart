@@ -20,7 +20,7 @@ public class StockService {
         this.stockRepository = stockRepository;
     }
 
-    public int createItem(double price) {
+    public int createItem(int price) {
         Stock stock = new Stock(price);
         stock.setPrice(price);
 
@@ -29,6 +29,12 @@ public class StockService {
         int globalId = stock.getLocalId() * Environment.numOrderInstances + Environment.myStockInstanceId;
         stock.setItemId(globalId);
         stockRepository.save(stock);
+
+        // Update item logs in order instances
+        Map<String, Integer> data = Map.of("itemId", globalId, "price", stock.getPrice());
+        for (int partition = 0; partition < Environment.numOrderInstances; partition++) {
+            fromStockTemplate.send("fromStockItemPrice", partition, data);
+        }
 
         return globalId;
     }

@@ -35,6 +35,11 @@ public class TransactionHandler {
      */
     private Map<Integer, Map<String, Object>> transactionLog = new HashMap<>();
 
+    /**
+     * Map itemdId to price.
+     */
+    private Map<Integer, Integer> itemPrices = new HashMap<>();
+
     @Autowired
     private KafkaTemplate<Integer, Object> kafkaTemplate;
 
@@ -204,6 +209,15 @@ public class TransactionHandler {
         }
     }
 
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+    private void getItemPrice(Map<String, Integer> item) {
+        int itemId = item.get("itemId");
+        int price = item.get("price");
+
+        itemPrices.put(itemId, price);
+    }
+
     public void sendOrderExists(int orderId, int method) {
         Optional<Order> optOrder = orderRepository.findById(orderId);
         if (optOrder.isEmpty()) {
@@ -243,6 +257,7 @@ public class TransactionHandler {
 
     private void transactionSucceeded(int orderId) {
         Order order = currentOrders.remove(orderId);
+        sendOrderExists(orderId, 1);
         order.setPaid(true);
         orderRepository.save(order);
         pendingResponses.get(orderId).setResult(ResponseEntity.ok().build());
@@ -264,4 +279,13 @@ public class TransactionHandler {
         }
         return partitionToIds;
     }
+
+    public boolean itemExists(int itemId) {
+        return itemPrices.containsKey(itemId);
+    }
+
+    public int getItemPrice(int itemId) {
+        return itemPrices.get(itemId);
+    }
+
 }

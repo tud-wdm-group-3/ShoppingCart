@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
 
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -58,22 +59,31 @@ public class OrderService {
     }
 
     public boolean addItemToOrder(int orderId, int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
+
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
             if (!order.isPaid()) {
                 List<Integer> items = order.getItems();
-                if (!items.contains(itemId)) {
-                    items.add(itemId);
-                    repository.save(order);
-                    return true;
-                }
+                items.add(itemId);
+
+                // Increase order's total cost
+                int price = transactionHandler.getItemPrice(itemId);
+                order.setTotalCost(order.getTotalCost() + price);
+
+                repository.save(order);
+                return true;
             }
         }
         return false;
     }
 
     public boolean removeItemFromOrder(int orderId,int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
+
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
@@ -81,6 +91,11 @@ public class OrderService {
                 List<Integer> items = order.getItems();
                 if (items.contains(itemId)) {
                     items.remove(itemId);
+
+                    // Decrease order's total cost
+                    int price = transactionHandler.getItemPrice(itemId);
+                    order.setTotalCost(order.getTotalCost() - price);
+
                     repository.save(order);
                     return true;
                 }
