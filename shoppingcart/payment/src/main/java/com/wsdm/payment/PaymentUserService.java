@@ -56,7 +56,7 @@ public class PaymentUserService {
 
     public boolean cancelPayment(Integer userId, Integer orderId) {
         if (!orderStatuses.containsKey(orderId)) {
-            throw new IllegalStateException("Order with Id " + orderId + " does not exist");
+            throw new IllegalStateException("Order with Id " + orderId + " does not exist or is already checked out.");
         }
 
         if (orderStatuses.get(orderId).get("paid") == 0) {
@@ -73,8 +73,6 @@ public class PaymentUserService {
         int credit = paymentUser.getCredit();
         paymentUser.setCredit(credit + refund);
         paymentUserRepository.save(paymentUser);
-
-        // TODO: stock rollbacks
 
         orderStatuses.remove(orderId);
         return true;

@@ -50,7 +50,7 @@ public record StockController(StockService stockService) {
     }
 
     @PostMapping(path="/item/create/{price}")
-    public Object addItem(@PathVariable(name="price") double price) {
+    public Object addItem(@PathVariable(name="price") int price) {
         if (price <= 0)
             return ResponseEntity.badRequest().build();
 
