@@ -2,7 +2,6 @@ package com.wsdm.payment;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -12,21 +11,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.async.DeferredResult;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
-public class PaymentUserService {
+public class PaymentService {
 
-    private final PaymentUserRepository paymentUserRepository;
+    private final PaymentRepository paymentRepository;
 
     private Map<Integer, Map<String, Integer>> orderStatuses = new HashMap<>();
 
     @Autowired
-    public PaymentUserService(PaymentUserRepository paymentUserRepository) {
-        this.paymentUserRepository = paymentUserRepository;
+    public PaymentService(PaymentRepository paymentRepository) {
+        this.paymentRepository = paymentRepository;
     }
 
     public boolean makePayment(Integer userId, Integer orderId, Integer amount) {
@@ -34,15 +32,15 @@ public class PaymentUserService {
             throw new IllegalStateException("Order with Id " + orderId + " does not exist");
         }
 
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
 
-        PaymentUser paymentUser = optPaymentUser.get();
-        if (paymentUser.getCredit() >= amount){
-            paymentUser.setCredit(paymentUser.getCredit() - amount);
-            paymentUserRepository.save(paymentUser);
+        Payment payment = optPaymentUser.get();
+        if (payment.getCredit() >= amount){
+            payment.setCredit(payment.getCredit() - amount);
+            paymentRepository.save(payment);
 
             orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", amount, "paid", 1));
 
@@ -63,16 +61,16 @@ public class PaymentUserService {
             throw new IllegalStateException("Order with Id " + orderId + " is not paid yet.");
         }
 
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
 
-        PaymentUser paymentUser = optPaymentUser.get();
+        Payment payment = optPaymentUser.get();
         int refund = orderStatuses.get(orderId).get("totalCost");
-        int credit = paymentUser.getCredit();
-        paymentUser.setCredit(credit + refund);
-        paymentUserRepository.save(paymentUser);
+        int credit = payment.getCredit();
+        payment.setCredit(credit + refund);
+        paymentRepository.save(payment);
 
         orderStatuses.remove(orderId);
         return true;
@@ -97,32 +95,32 @@ public class PaymentUserService {
     }
 
     public Integer registerUser() {
-        PaymentUser paymentUser = PaymentUser.builder()
+        Payment payment = Payment.builder()
                 .credit(0)
                 .build();
 
         // Convert local to global id
-        paymentUserRepository.save(paymentUser);
-        int globalId = paymentUser.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
-        paymentUser.setUserId(globalId);
-        paymentUserRepository.save(paymentUser);
+        paymentRepository.save(payment);
+        int globalId = payment.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
+        payment.setUserId(globalId);
+        paymentRepository.save(payment);
 
         return globalId;
     }
 
-    public Optional<PaymentUser> findUser(Integer userId) {
+    public Optional<Payment> findUser(Integer userId) {
         int localId = (userId - Environment.myPaymentInstanceId) / Environment.numPaymentInstances;
-        return paymentUserRepository.findById(localId);
+        return paymentRepository.findById(localId);
     }
 
     public boolean addFunds(Integer userId, Integer amount) {
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             return false;
         }
-        PaymentUser paymentUser = optPaymentUser.get();
-        paymentUser.setCredit(paymentUser.getCredit() + amount);
-        paymentUserRepository.save(paymentUser);
+        Payment payment = optPaymentUser.get();
+        payment.setCredit(payment.getCredit() + amount);
+        paymentRepository.save(payment);
         return true;
     }
 
@@ -137,21 +135,21 @@ public class PaymentUserService {
         int userId = (int) request.value().get("userId");
         int cost = (int) request.value().get("totalCost");
         System.out.println(request.value());
-        Optional<PaymentUser> optPaymentUser = findUser(userId);
+        Optional<Payment> optPaymentUser = findUser(userId);
         if (!optPaymentUser.isPresent()) {
             throw new IllegalStateException("unknown user");
         }
-        PaymentUser paymentUser = optPaymentUser.get();
-        System.out.println(paymentUser);
-        int credit = paymentUser.getCredit();
+        Payment payment = optPaymentUser.get();
+        System.out.println(payment);
+        int credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
         if (enoughCredit) {
             System.out.println("enough");
-            paymentUser.setCredit(credit - cost);
-            paymentUserRepository.save(paymentUser);
+            payment.setCredit(credit - cost);
+            paymentRepository.save(payment);
             orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", cost, "paid", 1));
         }
-        System.out.println(paymentUser);
+        System.out.println(payment);
         int partition = orderId % Environment.numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
@@ -180,9 +178,9 @@ public class PaymentUserService {
     protected void getPaymentRollback(ConsumerRecord<Integer, Map<String, Object>> request) {
         int userId = (int) request.value().get("userId");
         int refund = (int) request.value().get("refund");
-        PaymentUser user = paymentUserRepository.getById(userId);
+        Payment user = paymentRepository.getById(userId);
         int credit = user.getCredit();
         user.setCredit(credit + refund);
-        paymentUserRepository.save(user);
+        paymentRepository.save(user);
     }
 }
