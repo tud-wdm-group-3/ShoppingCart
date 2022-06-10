@@ -155,7 +155,6 @@ public class PaymentService {
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
-    @Transactional
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void orderExists(ConsumerRecord<Integer, Map<String, Integer>> request) {
@@ -172,7 +171,7 @@ public class PaymentService {
         }
     }
 
-    @Transactional
+
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(ConsumerRecord<Integer, Map<String, Object>> request) {

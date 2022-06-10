@@ -21,7 +21,6 @@ public class OrderController {
     
     @PostMapping(path = "/create/{userId}")
     public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
-        // TODO: check if user exists in payment's db and return ResponseEntity
         return Map.of("order_id", service.createOrder(userId));
     }
 
@@ -40,23 +39,23 @@ public class OrderController {
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
-    public DeferredResult<ResponseEntity> addItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                        @PathVariable(name="itemId") int itemId) {
         boolean completed = service.addItemToOrder(orderId,itemId);
-        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+        ResponseEntity response = ResponseEntity.ok().build();
         if (!completed) {
-            response.setResult(ResponseEntity.badRequest().build());
+            response = ResponseEntity.badRequest().build();
         }
         return response;
     }
 
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
-    public DeferredResult<ResponseEntity> removeItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
         boolean completed = service.removeItemFromOrder(orderId, itemId);
-        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+        ResponseEntity response = ResponseEntity.ok().build();
         if (!completed) {
-            response.setResult(ResponseEntity.badRequest().build());
+            response = ResponseEntity.badRequest().build();
         }
         return response;
     }
