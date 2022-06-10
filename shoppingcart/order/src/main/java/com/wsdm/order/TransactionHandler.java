@@ -209,8 +209,12 @@ public class TransactionHandler {
         }
     }
 
+
+    /**
+     * Used to initialize cache of itemIds, so false relativeToCurrent.
+     */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         int price = item.get("price");

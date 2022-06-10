@@ -155,8 +155,13 @@ public class PaymentService {
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
+
+    /**
+     * Used to initialize cache of orderIds, so false relativeToCurrent.
+     * @param request
+     */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
     protected void orderExists(ConsumerRecord<Integer, Map<String, Integer>> request) {
         int orderId = request.key();
         int method = request.value().get("method");
