@@ -1,0 +1,11 @@
+replicaCount: 1
+persistence:
+  size: 128Mi
+zookeeper:
+  persistence:
+    size: 128Mi
+  replicaCount: 1
+#provisioning:
+#  replicationFactor: 2
+#  numPartitions: 2
+#  topics: []

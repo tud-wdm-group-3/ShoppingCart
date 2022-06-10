@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds all the images and pushes them to DockerHub.
-# Make sure you are logged in with the docker cli (and change the handle)
+# Make sure you are logged in with the docker cli (also change the handle accordingly)
 
 DOCKERHUB_HANDLE=ngavalas
 
