@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.Map;
 import java.util.Optional;
@@ -18,23 +17,21 @@ public class PaymentController {
     PaymentService paymentService;
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
-    public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
-        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+    public ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
         boolean completed = paymentService.makePayment(userId, orderId, amount);
         if (!completed) {
-            response.setResult(ResponseEntity.badRequest().build());
+            return ResponseEntity.badRequest().build();
         }
-        return response;
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping(path="cancel/{user_id}/{order_id}")
-    public DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
-        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+    public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         boolean completed = paymentService.cancelPayment(userId, orderId);
         if (!completed) {
-            response.setResult(ResponseEntity.badRequest().build());
+            ResponseEntity.badRequest().build();
         }
-        return response;
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping(path="status/{user_id}/{order_id}")
@@ -50,9 +47,7 @@ public class PaymentController {
     @PostMapping(path="add_funds/{user_id}/{amount}")
     public Object addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
         if (amount <= 0){
-            DeferredResult<ResponseEntity> response = new DeferredResult<>();
-            response.setResult(ResponseEntity.badRequest().build());
-            return response;
+            return ResponseEntity.badRequest().build();
         }
         boolean completed =  paymentService.addFunds(userId, amount);
         return Map.of("done", completed);
