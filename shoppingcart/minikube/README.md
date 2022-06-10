@@ -1,0 +1,1 @@
+Scaled-down version of the deployment without replication for local testing with minikube.
