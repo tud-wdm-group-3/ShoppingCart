@@ -1,0 +1,11 @@
+global:
+  postgresql:
+    auth:
+      username: pguser
+      password: pgpassword
+      database: pgdb
+primary:
+  persistence:
+    size: 128Mi
+readReplicas:
+  replicaCount: 0
