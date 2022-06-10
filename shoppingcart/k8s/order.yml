@@ -39,7 +39,7 @@ spec:
               value: order-0-db-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           resources:
             limits:
               memory: "1Gi"
@@ -93,7 +93,7 @@ spec:
               value: order-1-db-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           resources:
             limits:
               memory: "1Gi"
