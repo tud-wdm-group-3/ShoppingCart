@@ -18,8 +18,7 @@ public record StockController(StockService stockService) {
         if (stock.isPresent()){
             return Map.of("amount", stock.get().getAmount(), "price", stock.get().getPrice());
         }
-        DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        response.setResult(ResponseEntity.notFound().build());
+        ResponseEntity response = ResponseEntity.notFound().build();
         return response;
     }
 
@@ -32,7 +31,7 @@ public record StockController(StockService stockService) {
         if (stockService.subtractStock(item_id, amount))
             return ResponseEntity.ok().build();
         else
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
     }
 
     @PostMapping(path="/add/{item_id}/{amount}")
