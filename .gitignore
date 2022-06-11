@@ -1,3 +1,6 @@
 .idea/*
-shoppingcart/*/target/*
 *.iml
+target
+
+shoppingcart/*/target/*
+

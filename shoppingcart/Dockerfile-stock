@@ -1,0 +1,12 @@
+FROM maven:3.6.3-openjdk-17-slim
+
+WORKDIR /srv
+
+COPY ./payment /srv/payment
+COPY ./stock /srv/stock
+COPY ./order /srv/order
+COPY ./pom.xml /srv
+
+RUN mvn clean package spring-boot:repackage
+
+CMD ["java", "-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]

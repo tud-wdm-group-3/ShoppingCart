@@ -1,4 +1,4 @@
-package com.wsdm.stock;
+package com.wsdm.payment;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,23 +7,17 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 
-@Table(name = "Stock")
 @Data
-@Entity
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Stock {
+@Entity
+public class Payment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer localId;
 
-    private Integer itemId;
-    private Integer amount;
-    private Integer price;
-
-    public Stock(double price){
-        amount=1;
-        price = price;
-    }
+    private Integer userId;
+    private Integer credit;
 }

@@ -2,9 +2,13 @@ package com.wsdm.order;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.async.DeferredResult;
 
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -12,62 +16,95 @@ import java.util.concurrent.Future;
 
 @Service
 public class OrderService {
+
     final OrderRepository repository;
 
-    TransactionHandler transactionHandler;
+    @Autowired
+    private TransactionHandler transactionHandler;
 
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
+        transactionHandler = new TransactionHandler(repository);
     }
 
     public int createOrder(int userId){
         Order order=new Order();
         order.setUserId(userId);
-
-        // Convert local to global id
         repository.save(order);
-        int globalId = order.getOrderId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
-        //order.setOrderId(globalId);
-        //repository.save(order);
 
-        return order.getOrderId();
+        int globalId = order.getLocalId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
+        order.setOrderId(globalId);
+
+        transactionHandler.sendOrderExists(globalId, 0);
+
+        return globalId;
     }
 
-    public void deleteOrder(int orderId){
-        repository.findById(orderId).ifPresent(repository::delete);
+    public boolean deleteOrder(int orderId){
+        transactionHandler.sendOrderExists(orderId, 1);
+        Optional<Order> optOrder = findOrder(orderId);
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            repository.delete(order);
+            return true;
+        }
+        return false;
     }
 
     public Optional<Order> findOrder(int orderId){
-        return repository.findById(orderId);
+        // Convert to local id
+        int localId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
+        return repository.findById(localId);
     }
 
-    public void addItemToOrder(int orderId,int itemId){
-        Optional<Order> res = repository.findById(orderId);
-        if(res.isPresent()) {
-            Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (!items.contains(itemId)) {
-                items.add(itemId);
-                repository.save(order);
-            }
-        }
-    }
+    public boolean addItemToOrder(int orderId, int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
 
-    public void removeItemFromOrder(int orderId,int itemId){
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (items.contains(itemId)) {
-                items.remove(itemId);
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
+                items.add(itemId);
+
+                // Increase order's total cost
+                int price = transactionHandler.getItemPrice(itemId);
+                order.setTotalCost(order.getTotalCost() + price);
+
                 repository.save(order);
+                return true;
             }
         }
+        return false;
     }
 
-    public boolean checkout(Order order){
-        boolean result = transactionHandler.startCheckout(order);
-        return true; // TODO: How to do this non-blocking?
+    public boolean removeItemFromOrder(int orderId,int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
+
+        Optional<Order> res = findOrder(orderId);
+        if(res.isPresent()) {
+            Order order = res.get();
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
+                if (items.contains(itemId)) {
+                    items.remove(itemId);
+
+                    // Decrease order's total cost
+                    int price = transactionHandler.getItemPrice(itemId);
+                    order.setTotalCost(order.getTotalCost() - price);
+
+                    repository.save(order);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void checkout(Order order, DeferredResult<ResponseEntity> response){
+        transactionHandler.startCheckout(order, response);
     }
 }

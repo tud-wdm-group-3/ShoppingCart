@@ -1,13 +1,9 @@
 server:
-  port: 8082
+  port: ${SERVICE_PORT:8081}
 
 spring:
   application:
     name: payment
-  datasource:
-    username: 'paymentuser'
-    password: 'paymentpwd'
-    url: jdbc:postgresql://localhost:5432/paymentdb
   jpa:
     properties:
       hibernate:

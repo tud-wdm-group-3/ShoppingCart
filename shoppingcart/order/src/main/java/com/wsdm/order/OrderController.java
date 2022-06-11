@@ -8,9 +8,8 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.async.DeferredResult;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @RestController
@@ -19,53 +18,57 @@ public class OrderController {
 
     @Autowired
     OrderService service;
+    
     @PostMapping(path = "/create/{userId}")
-    public Map<String,String> create(@PathVariable(name="userId") int userId) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        System.out.println("creating user with id:"+userId+"at "+dtf.format(now));
-        HashMap<String,String> output=new HashMap<>();
-        output.put("orderId",Integer.toString(service.createOrder(userId)));
-        return output;
+    public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
+        return Map.of("order_id", service.createOrder(userId));
     }
 
     @DeleteMapping(path = "/remove/{orderId}")
-    public void remove(@PathVariable(name="orderId") int orderId) {
-        service.deleteOrder(orderId);
-        return;
+    public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
+        boolean completed = service.deleteOrder(orderId);
+        if (!completed)
+            return ResponseEntity.notFound().build();
+        else
+            return ResponseEntity.ok().build();
     }
 
     @GetMapping(path = "/find/{orderId}")
-    public Order find(@PathVariable(name="orderId") int orderId) {
-        return service.findOrder(orderId).get();
+    public Optional<Order> find(@PathVariable(name="orderId") int orderId) {
+        return service.findOrder(orderId);
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
-    public void addItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                        @PathVariable(name="itemId") int itemId) {
-        service.addItemToOrder(orderId,itemId);
-        return;
+        boolean completed = service.addItemToOrder(orderId,itemId);
+        ResponseEntity response = ResponseEntity.ok().build();
+        if (!completed) {
+            response = ResponseEntity.badRequest().build();
+        }
+        return response;
     }
 
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
-    public void removeItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
-        service.removeItemFromOrder(orderId, itemId);
-        return;
+        boolean completed = service.removeItemFromOrder(orderId, itemId);
+        ResponseEntity response = ResponseEntity.ok().build();
+        if (!completed) {
+            response = ResponseEntity.badRequest().build();
+        }
+        return response;
     }
 
     @PostMapping(path = "/checkout/{orderId}")
-    public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
+    public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
         Optional<Order> order = service.findOrder(orderId);
+        DeferredResult<ResponseEntity> response = new DeferredResult<>();
         if (!order.isPresent()) {
-            return ResponseEntity.notFound().build();
+            response.setResult(ResponseEntity.notFound().build());
         } else {
-            boolean result = service.checkout(order.get());
-            if (result) {
-                return ResponseEntity.ok().build();
-            } else {
-                return ResponseEntity.internalServerError().build();
-            }
+            service.checkout(order.get(), response);
         }
+        return response;
     }
 }
