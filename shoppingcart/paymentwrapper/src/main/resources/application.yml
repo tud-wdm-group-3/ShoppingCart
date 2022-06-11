@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: payments-wrapper
+server:
+  port: 8082
+  servlet:
+    context-path: /payment

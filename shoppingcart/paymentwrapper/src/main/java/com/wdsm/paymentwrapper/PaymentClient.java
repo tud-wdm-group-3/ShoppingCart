@@ -1,6 +1,7 @@
 package com.wdsm.paymentwrapper;
 
 
+import com.wsdm.payment.Payment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClientBuilder;
 import org.springframework.context.ApplicationContext;
@@ -23,10 +24,10 @@ public class PaymentClient {
 
     interface CustomCall {
         @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
-        DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount);
+        ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount);
 
         @PostMapping(path="cancel/{user_id}/{order_id}")
-        DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId);
+        ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId);
 
         @GetMapping(path="status/{user_id}/{order_id}")
         Object getStatus(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId);
@@ -41,11 +42,11 @@ public class PaymentClient {
         Optional<Payment> findUser(@PathVariable("user_id") Integer userId);
     }
 
-    public DeferredResult<ResponseEntity> payOrder(Integer userId,Integer orderId, Integer amount,int partitionId){
+    public ResponseEntity payOrder(Integer userId,Integer orderId, Integer amount,int partitionId){
         return delegate(partitionId).pay(userId,orderId,amount);
     }
 
-    public DeferredResult<ResponseEntity> cancelOrderPayment(Integer userId, Integer orderId,int partitionId){
+    public ResponseEntity cancelOrderPayment(Integer userId, Integer orderId,int partitionId){
         return delegate(partitionId).cancel(userId,orderId);
     }
 

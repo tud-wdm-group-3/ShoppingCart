@@ -59,7 +59,6 @@ public class OrderWrapperController {
      * @return id of instance to receive request
      */
     int figureOutPartition(int id){
-
         Applications apps=eurekaClient.getApplications();
         int sum=0;
         for(Application app:apps.getRegisteredApplications()){
@@ -69,8 +68,8 @@ public class OrderWrapperController {
         }
         if(id<0){
             Random r=new Random();
-            return r.nextInt(sum)+1;
+            return r.nextInt(sum);
         }else
-            return (id%sum)+1;
+            return (id%sum);
     }
 }
