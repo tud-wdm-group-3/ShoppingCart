@@ -48,7 +48,8 @@ public record StockController(StockService stockService) {
     public HashMap<String, String> addItem(@PathVariable(name="price") double price) {
         Stock stock = stockService.addItem(price);
         HashMap<String, String> res = new HashMap<String, String>();
-        res.put("item_id", stock.getItem_id().toString());
+        res.put("item_id","0");
+        //res.put("item_id", stock.getItem_id().toString());
 
         return res;
     }

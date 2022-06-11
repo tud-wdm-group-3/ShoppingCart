@@ -5,7 +5,7 @@ spring:
     name: stock
   datasource:
     password: 123
-    url: jdbc:postgresql://localhost:5432/stock
+    url: jdbc:postgresql://localhost:5432/postgres
     username: postgres
   jpa:
 
@@ -16,3 +16,6 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+eureka:
+  instance:
+    instanceId: ${spring.application.name}:${spring.application.instance_id}

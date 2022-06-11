@@ -25,6 +25,6 @@ public class PaymentUserController extends KafkaSubscriber {
 
     @GetMapping(path="find_user/{user_id}")
     public PaymentUser findUser(@PathVariable("user_id") Integer userId) {
-        return paymentUserService.findUser(userId);
+        return paymentUserService.findUser(userId).get();
     }
 }

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: order-wrapper
+    name: orders-wrapper
 server:
   port: 8081
   servlet:
