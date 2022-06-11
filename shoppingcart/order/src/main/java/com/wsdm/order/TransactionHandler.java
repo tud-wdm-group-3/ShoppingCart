@@ -1,5 +1,6 @@
 package com.wsdm.order;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -222,8 +223,29 @@ public class TransactionHandler {
         itemPrices.put(itemId, price);
     }
 
+    /**
+     * Used to check if the amount of a received payment request equals the totalCost of the order
+     */
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentCheckCost",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
+    private void checkOrderCost(ConsumerRecord<Integer, Integer> request) {
+        int orderId = request.key();
+        int amount = request.value();
+
+        Order order = currentOrders.get(orderId);
+        int cost = order.getTotalCost();
+        int check = amount == cost ? 1 : 0;
+
+        int userId = order.getUserId();
+        int partition = getPartition(userId, Environment.numPaymentInstances);
+        Map<String, Integer> data = Map.of("check", check, "userId", userId, "cost", cost);
+        kafkaTemplate.send("toPaymentCheckCost", partition, orderId, data);
+    }
+
+
     public void sendOrderExists(int orderId, int method) {
-        Optional<Order> optOrder = orderRepository.findById(orderId);
+        int localOrderId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
+        Optional<Order> optOrder = orderRepository.findById(localOrderId);
         if (optOrder.isEmpty()) {
             throw new IllegalStateException("Order with Id " + orderId + " does not exist");
         }
@@ -233,7 +255,7 @@ public class TransactionHandler {
         int partition = getPartition(userId, Environment.numPaymentInstances);
 
         Map<String, Integer> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
-        kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), reqValue);
+        kafkaTemplate.send("toPaymentOrderExists", partition, orderId, reqValue);
     }
 
     private void sendStockRollback(Order order, Map<Integer, Boolean> confirmations) {

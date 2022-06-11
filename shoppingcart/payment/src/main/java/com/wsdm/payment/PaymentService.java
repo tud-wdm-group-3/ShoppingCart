@@ -20,36 +20,42 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
 
+    /**
+     * A log of current order statuses
+     */
     private Map<Integer, Map<String, Integer>> orderStatuses = new HashMap<>();
+
+    /**
+     * Maps orderId to deferredResult.
+     */
+    private Map<Integer, DeferredResult<ResponseEntity>> pendingResponses = new HashMap<>();
 
     @Autowired
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
     }
 
-    public boolean makePayment(Integer userId, Integer orderId, Integer amount) {
+    public void makePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response) {
         if (!orderStatuses.containsKey(orderId)) {
-            throw new IllegalStateException("Order with Id " + orderId + " does not exist");
+            response.setResult(ResponseEntity.notFound().build());
+            return;
         }
 
         Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
-            throw new IllegalStateException("user with Id " + userId + " does not exist");
+            response.setResult(ResponseEntity.notFound().build());
+            return;
         }
+        
+        pendingResponses.put(orderId, response);
+        checkCost(orderId, amount);
+    }
 
-        Payment payment = optPaymentUser.get();
-        if (payment.getCredit() >= amount){
-            payment.setCredit(payment.getCredit() - amount);
-            paymentRepository.save(payment);
+    private void checkCost(Integer orderId, Integer amount) {
+        System.out.println("getting cost from order");
+        int partition = orderId % Environment.numOrderInstances;
 
-            orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", amount, "paid", 1));
-
-            int partition = orderId % Environment.numOrderInstances;
-            fromPaymentTemplate.send("fromPaymentUpdate", partition, orderId);
-
-            return true;
-        }
-        return false;
+        fromPaymentTemplate.send("fromPaymentCheckCost", partition, orderId, amount);
     }
 
     public boolean cancelPayment(Integer userId, Integer orderId) {
@@ -176,6 +182,37 @@ public class PaymentService {
         }
     }
 
+    /**
+     * Implements the payment if the requested amount to pay matches the totalCost of the corresponding order
+     */
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentCheckCost",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
+    protected void costChecked(ConsumerRecord<Integer, Map<String, Integer>> request) {
+        int orderId = request.key();
+        int check = request.value().get("check");
+        int userId = request.value().get("userId");
+        int amount = request.value().get("cost");
+
+        Payment payment = findUser(userId).get();
+
+        // If check==1, the requested amount to pay matches the totalCost of the order
+        if (check == 1) {
+            if (payment.getCredit() >= amount){
+                payment.setCredit(payment.getCredit() - amount);
+                paymentRepository.save(payment);
+
+                orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", amount, "paid", 1));
+
+                int partition = orderId % Environment.numOrderInstances;
+                fromPaymentTemplate.send("fromPaymentUpdate", partition, orderId);
+
+                pendingResponses.get(orderId).setResult(ResponseEntity.ok().build());
+            }
+        } else {
+            pendingResponses.get(orderId).setResult(ResponseEntity.badRequest().build());
+        }
+    }
+
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
@@ -187,4 +224,5 @@ public class PaymentService {
         user.setCredit(credit + refund);
         paymentRepository.save(user);
     }
+
 }
