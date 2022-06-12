@@ -16,7 +16,7 @@ kind: Deployment
 metadata:
   name: stock-0
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       component: stock-0
@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: stock-0
-          image: stock:latest
+          image: docker.io/ngavalas/stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -36,17 +36,19 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: stock-0-db-postgresql-ha-pgpool
+              value: stock-db-0-postgresql
             - name: SERVICE_PORT
               value: "8080"
-          imagePullPolicy: Never
+            - name: KAFKA_HOST
+              value: kafka
+          imagePullPolicy: Always
           resources:
             limits:
-              memory: "1Gi"
-              cpu: "1"
+              memory: "500Mi"
+              cpu: "0.5"
             requests:
-              memory: "1Gi"
-              cpu: "1"
+              memory: "500Mi"
+              cpu: "0.5"
           command: ["java"]
           args: ["-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]
           ports:
@@ -70,7 +72,7 @@ kind: Deployment
 metadata:
   name: stock-1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       component: stock-1
@@ -81,7 +83,7 @@ spec:
     spec:
       containers:
         - name: stock-1
-          image: stock:latest
+          image: docker.io/ngavalas/stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -90,17 +92,19 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: stock-1-db-postgresql-ha-pgpool
+              value: stock-db-1-postgresql
             - name: SERVICE_PORT
               value: "8080"
-          imagePullPolicy: Never
+            - name: KAFKA_HOST
+              value: kafka
+          imagePullPolicy: Always
           resources:
             limits:
-              memory: "1Gi"
-              cpu: "1"
+              memory: "500Mi"
+              cpu: "0.5"
             requests:
-              memory: "1Gi"
-              cpu: "1"
+              memory: "500Mi"
+              cpu: "0.5"
           command: ["java"]
           args: ["-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]
           ports:
