@@ -112,7 +112,7 @@ public class PaymentService {
         payment.setCredit(credit + refund);
         paymentRepository.save(payment);
 
-        orderStatuses.remove(orderId);
+        // TODO: make sure paid flag at order is set to false
         return true;
     }
 
