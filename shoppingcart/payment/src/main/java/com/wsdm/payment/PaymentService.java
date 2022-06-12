@@ -2,6 +2,7 @@ package com.wsdm.payment;
 
 import com.wsdm.payment.persistentlog.LogRepository;
 import com.wsdm.payment.persistentlog.PersistentMap;
+import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -66,7 +67,7 @@ public class PaymentService {
             orderStatuses.put(orderId, curOrderStatus);
 
             pendingPaymentResponses.put(orderId, response);
-            int partition = orderId % Environment.numOrderInstances;
+            int partition = Partitioner.getPartition(orderId, Environment.numOrderInstances);
 
             Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
             fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
@@ -112,7 +113,9 @@ public class PaymentService {
         payment.setCredit(credit + refund);
         paymentRepository.save(payment);
 
-        // TODO: make sure paid flag at order is set to false
+        int partition = Partitioner.getPartition(orderId, Environment.numOrderInstances);
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId);
+        fromPaymentTemplate.send("fromPaymentCancelled", partition, orderId, data);
         return true;
     }
 

@@ -179,6 +179,22 @@ public class OrderService {
         }
     }
 
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentCancelled",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+    private void paymentCancelled(Map<String, Integer> request) {
+        int orderId = request.get("orderId");
+        int userId = request.get("userId");
+
+        Optional<Order> optOrder = findOrder(orderId);
+
+        if (!optOrder.isPresent()) {
+            throw new AssertionError("Payment made for unexisting order");
+        }
+        Order order = optOrder.get();
+        order.setPaid(false);
+        repository.save(order);
+    }
+
     private boolean mayChangeOrder(Order order) {
         return !order.isInCheckout() && !order.isPaid();
     }
