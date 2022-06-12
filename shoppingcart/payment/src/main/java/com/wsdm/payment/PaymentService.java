@@ -67,7 +67,9 @@ public class PaymentService {
 
             pendingPaymentResponses.put(orderId, response);
             int partition = orderId % Environment.numOrderInstances;
-            fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, amount);
+
+            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
+            fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
         }
     }
 
