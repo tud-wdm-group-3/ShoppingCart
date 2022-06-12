@@ -25,14 +25,15 @@ public class PersistentMap<V> implements Map<Integer, V> {
     private Map<Integer, V> innerMap;
     private Map<Integer, Integer> keyToId;
 
-    @Autowired
-    private static LogRepository logRepo;
+    private LogRepository logRepo;
 
     @Autowired
     private static ObjectMapper objectMapper;
 
-    public PersistentMap(String mapName, Class<V> classAttr) {
+    public PersistentMap(String mapName, LogRepository logRepo, Class<V> classAttr) {
         this.mapName = mapName;
+        this.logRepo = logRepo;
+
         this.innerMap = new HashMap<>();
         this.keyToId = new HashMap<>();
 

@@ -1,7 +1,8 @@
 package com.wsdm.order;
 
-
 import com.wsdm.order.utils.Partitioner;
+import com.wsdm.order.persistentlog.Log;
+import com.wsdm.order.persistentlog.LogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
 import org.springframework.http.ResponseEntity;
@@ -25,9 +26,9 @@ public class OrderService {
     private TransactionHandler transactionHandler;
 
     @Autowired
-    public OrderService(OrderRepository repository) {
+    public OrderService(OrderRepository repository, LogRepository logRepository) {
         this.repository = repository;
-        transactionHandler = new TransactionHandler(repository);
+        transactionHandler = new TransactionHandler(repository, logRepository);
     }
 
     public int createOrder(int userId){

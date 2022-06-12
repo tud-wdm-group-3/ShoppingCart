@@ -2,6 +2,8 @@ package com.wsdm.order;
 
 import com.wsdm.order.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import com.wsdm.order.persistentlog.LogRepository;
+import com.wsdm.order.persistentlog.PersistentMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -29,21 +31,26 @@ public class TransactionHandler {
     /**
      * Map orderId to properties map, including total, count, flag etc.
      */
-    private Map<Integer, Map<String, Object>> stockCheckLog = new HashMap<>();
+    private Map<Integer, Map> stockCheckLog;
 
     /**
      * Map orderId to properties map, including total, count, and
      * a special map (confirmations) containing which partitions confirmed the transaction.
      */
-    private Map<Integer, Map<String, Object>> transactionLog = new HashMap<>();
+    private Map<Integer, Map> transactionLog;
 
     @Autowired
     private KafkaTemplate<Integer, Object> kafkaTemplate;
 
     final private OrderRepository orderRepository;
+    final private LogRepository logRepository;
 
-    public TransactionHandler(OrderRepository orderRepository) {
+    public TransactionHandler(OrderRepository orderRepository, LogRepository logRepository) {
         this.orderRepository = orderRepository;
+        this.logRepository = logRepository;
+
+        this.stockCheckLog = new PersistentMap<Map>("stockCheckLog", logRepository, Map.class);
+        this.transactionLog = new PersistentMap<Map>("transactionLog", logRepository, Map.class);
     }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
@@ -101,6 +108,7 @@ public class TransactionHandler {
         // Update info
         curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
         curOrderLog.put("flag", prevEnoughInStock && enoughInStock);
+        stockCheckLog.put(orderId, curOrderLog);
 
         if (curOrderLog.get("count") == curOrderLog.get("total")){
             // Remove it from the log since check is completed
@@ -188,8 +196,7 @@ public class TransactionHandler {
         // Process response
         curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
         curOrderConfirmations.put(stockId, enoughInStock);
-
-        // TODO: put back stuff in transactionlog? idk bro
+        transactionLog.put(orderId, curOrderLog);
 
         if (curOrderLog.get("count") == curOrderLog.get("total")){
 
