@@ -23,12 +23,12 @@ public class PaymentService {
     /**
      * A log of current order statuses
      */
-    private Map<Integer, Map<String, Integer>> orderStatuses = new HashMap<>();
+    private Map<Integer, Map<String, Object>> orderStatuses = new HashMap<>();
 
     /**
      * Maps orderId to deferredResult.
      */
-    private Map<Integer, DeferredResult<ResponseEntity>> pendingResponses = new HashMap<>();
+    private Map<Integer, DeferredResult<ResponseEntity>> pendingPaymentResponses = new HashMap<>();
 
     @Autowired
     public PaymentService(PaymentRepository paymentRepository) {
@@ -46,16 +46,40 @@ public class PaymentService {
             response.setResult(ResponseEntity.notFound().build());
             return;
         }
-        
-        pendingResponses.put(orderId, response);
-        checkCost(orderId, amount);
+
+        Payment payment = optPaymentUser.get();
+
+        int credit = payment.getCredit();
+        boolean enoughCredit = credit >= amount;
+        if (!enoughCredit) {
+            response.setResult(ResponseEntity.badRequest().build());
+            return;
+        } else {
+            payment.setCredit(credit - amount);
+            paymentRepository.save(payment);
+            orderStatuses.get(orderId).put("amountPaid", amount);
+
+            pendingPaymentResponses.put(orderId, response);
+            int partition = orderId % Environment.numOrderInstances;
+            fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, amount);
+        }
     }
 
-    private void checkCost(Integer orderId, Integer amount) {
-        System.out.println("getting cost from order");
-        int partition = orderId % Environment.numOrderInstances;
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+    public void paymentWasOk(Map<String, Object> response) {
+        int orderId = (int) response.get("orderId");
+        boolean result = (boolean) response.get("result");
 
-        fromPaymentTemplate.send("fromPaymentCheckCost", partition, orderId, amount);
+        if (result) {
+            // payment was fine, so we can put to paid
+            orderStatuses.get(orderId).put("paid", true);
+            pendingPaymentResponses.get(orderId).setResult(ResponseEntity.ok().build());
+        } else {
+            // rollback the amount paid
+            getPaymentRollback(response);
+            pendingPaymentResponses.get(orderId).setResult(ResponseEntity.badRequest().build());
+        }
     }
 
     public boolean cancelPayment(Integer userId, Integer orderId) {
@@ -63,7 +87,7 @@ public class PaymentService {
             throw new IllegalStateException("Order with Id " + orderId + " does not exist or is already checked out.");
         }
 
-        if (orderStatuses.get(orderId).get("paid") == 0) {
+        if (!(boolean) orderStatuses.get(orderId).get("paid")) {
             throw new IllegalStateException("Order with Id " + orderId + " is not paid yet.");
         }
 
@@ -73,7 +97,7 @@ public class PaymentService {
         }
 
         Payment payment = optPaymentUser.get();
-        int refund = orderStatuses.get(orderId).get("totalCost");
+        int refund = (int) orderStatuses.get(orderId).get("amountPaid");
         int credit = payment.getCredit();
         payment.setCredit(credit + refund);
         paymentRepository.save(payment);
@@ -82,21 +106,19 @@ public class PaymentService {
         return true;
     }
 
+
+
     public Object getPaymentStatus(Integer userId, Integer orderId) {
         if (orderStatuses.containsKey(orderId)) {
             if (userId == orderStatuses.get(orderId).get("userId")) {
-                boolean paid = orderStatuses.get(orderId).get("paid") == 1;
+                boolean paid = (boolean) orderStatuses.get(orderId).get("paid");
                 Map<String, Boolean> response = Map.of("paid", paid);
                 return response;
             } else {
-                DeferredResult<ResponseEntity> response = new DeferredResult<>();
-                response.setResult(ResponseEntity.notFound().build());
-                return response;
+                return ResponseEntity.notFound().build();
             }
         } else {
-            DeferredResult<ResponseEntity> response = new DeferredResult<>();
-            response.setResult(ResponseEntity.notFound().build());
-            return response;
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -130,7 +152,6 @@ public class PaymentService {
         return true;
     }
 
-
     @Autowired
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
@@ -153,13 +174,28 @@ public class PaymentService {
             System.out.println("enough");
             payment.setCredit(credit - cost);
             paymentRepository.save(payment);
-            orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", cost, "paid", 1));
+            orderStatuses.put(orderId,  Map.of("userId", userId, "amountPaid", cost, "paid", true));
         }
         System.out.println(payment);
         int partition = orderId % Environment.numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
+
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+    protected void getPaymentRollback(Map<String, Object> request) {
+        int orderId = (int) request.get("orderId");
+        int userId = (int) request.get("userId");
+        int refund = (int) request.get("refund");
+        Payment user = paymentRepository.getById(userId);
+        orderStatuses.put(orderId,  Map.of("userId", userId, "amountPaid", 0, "paid", false));
+        int credit = user.getCredit();
+        user.setCredit(credit + refund);
+        paymentRepository.save(user);
+    }
+
+
 
 
     /**
@@ -176,53 +212,9 @@ public class PaymentService {
 
         // method = 0 for add
         if (method == 0 ) {
-            orderStatuses.put(orderId, Map.of("userId", userId, "totalCost", totalCost, "paid", 0));
+            orderStatuses.put(orderId, Map.of("userId", userId,"paid", false, "amountPaid", 0));
         } else {
             orderStatuses.remove(orderId);
         }
     }
-
-    /**
-     * Implements the payment if the requested amount to pay matches the totalCost of the corresponding order
-     */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentCheckCost",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
-    protected void costChecked(ConsumerRecord<Integer, Map<String, Integer>> request) {
-        int orderId = request.key();
-        int check = request.value().get("check");
-        int userId = request.value().get("userId");
-        int amount = request.value().get("cost");
-
-        Payment payment = findUser(userId).get();
-
-        // If check==1, the requested amount to pay matches the totalCost of the order
-        if (check == 1) {
-            if (payment.getCredit() >= amount){
-                payment.setCredit(payment.getCredit() - amount);
-                paymentRepository.save(payment);
-
-                orderStatuses.put(orderId,  Map.of("userId", userId, "totalCost", amount, "paid", 1));
-
-                int partition = orderId % Environment.numOrderInstances;
-                fromPaymentTemplate.send("fromPaymentUpdate", partition, orderId);
-
-                pendingResponses.get(orderId).setResult(ResponseEntity.ok().build());
-            }
-        } else {
-            pendingResponses.get(orderId).setResult(ResponseEntity.badRequest().build());
-        }
-    }
-
-
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getPaymentRollback(ConsumerRecord<Integer, Map<String, Object>> request) {
-        int userId = (int) request.value().get("userId");
-        int refund = (int) request.value().get("refund");
-        Payment user = paymentRepository.getById(userId);
-        int credit = user.getCredit();
-        user.setCredit(credit + refund);
-        paymentRepository.save(user);
-    }
-
 }
