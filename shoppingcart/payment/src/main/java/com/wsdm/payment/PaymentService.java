@@ -1,5 +1,7 @@
 package com.wsdm.payment;
 
+import com.wsdm.payment.persistentlog.LogRepository;
+import com.wsdm.payment.persistentlog.PersistentMap;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +25,7 @@ public class PaymentService {
     /**
      * A log of current order statuses
      */
-    private Map<Integer, Map<String, Object>> orderStatuses = new HashMap<>();
+    private Map<Integer, Map> orderStatuses;
 
     /**
      * Maps orderId to deferredResult.
@@ -31,8 +33,10 @@ public class PaymentService {
     private Map<Integer, DeferredResult<ResponseEntity>> pendingPaymentResponses = new HashMap<>();
 
     @Autowired
-    public PaymentService(PaymentRepository paymentRepository) {
+    public PaymentService(PaymentRepository paymentRepository, LogRepository logRepository) {
         this.paymentRepository = paymentRepository;
+
+        orderStatuses = new PersistentMap<Map>("orderStatuses", logRepository, Map.class);
     }
 
     public void makePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response) {
@@ -57,7 +61,9 @@ public class PaymentService {
         } else {
             payment.setCredit(credit - amount);
             paymentRepository.save(payment);
-            orderStatuses.get(orderId).put("amountPaid", amount);
+            Map<String, Object> curOrderStatus = orderStatuses.get(orderId);
+            curOrderStatus.put("amountPaid", amount);
+            orderStatuses.put(orderId, curOrderStatus);
 
             pendingPaymentResponses.put(orderId, response);
             int partition = orderId % Environment.numOrderInstances;
@@ -73,7 +79,9 @@ public class PaymentService {
 
         if (result) {
             // payment was fine, so we can put to paid
-            orderStatuses.get(orderId).put("paid", true);
+            Map<String, Object> curOrderStatus = orderStatuses.get(orderId);
+            curOrderStatus.put("paid", true);
+            orderStatuses.put(orderId, curOrderStatus);
             pendingPaymentResponses.get(orderId).setResult(ResponseEntity.ok().build());
         } else {
             // rollback the amount paid
