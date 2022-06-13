@@ -85,11 +85,11 @@ public class PaymentService {
             Map<String, Object> curOrderStatus = orderStatuses.get(orderId);
             curOrderStatus.put("paid", true);
             orderStatuses.put(orderId, curOrderStatus);
-            pendingPaymentResponses.get(orderId).setResult(ResponseEntity.ok().build());
+            pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
         } else {
             // rollback the amount paid
             getPaymentRollback(response);
-            pendingPaymentResponses.get(orderId).setResult(ResponseEntity.badRequest().build());
+            pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
         }
     }
 

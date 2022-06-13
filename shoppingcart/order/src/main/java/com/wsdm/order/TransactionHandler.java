@@ -249,6 +249,6 @@ public class TransactionHandler {
         sendOrderExists(order, 1);
         order.setPaid(true);
         orderRepository.save(order);
-        pendingResponses.get(orderId).setResult(ResponseEntity.ok().build());
+        pendingResponses.remove(orderId).setResult(ResponseEntity.ok().build());
     }
 }
