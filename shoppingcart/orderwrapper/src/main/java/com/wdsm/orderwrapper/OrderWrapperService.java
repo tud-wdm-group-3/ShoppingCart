@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OrderWrapperService {
 
-    private final OrderClient orderClient;
+    private final OldOrderClient orderClient;
 
     public String createOrder(int userId, int partitionId){
         return orderClient.createOrder(userId,partitionId);

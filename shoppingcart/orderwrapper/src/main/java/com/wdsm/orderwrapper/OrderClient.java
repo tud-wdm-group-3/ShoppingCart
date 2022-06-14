@@ -1,7 +1,9 @@
 package com.wdsm.orderwrapper;
 
 import com.wsdm.order.Order;
+import feign.RequestLine;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.FeignClientBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
@@ -11,61 +13,30 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
-@Component
-public class OrderClient {
-    FeignClientBuilder feignClientBuilder;
-    public OrderClient(@Autowired ApplicationContext applicationContext){
-        this.feignClientBuilder=new FeignClientBuilder(applicationContext);
-    }
+import java.net.URI;
 
-    interface CustomCall {
-        @PostMapping("orders/create/{userId}")
-        String create(@PathVariable(name = "userId") int userId);
+@FeignClient
+public interface OrderClient {
 
-        @DeleteMapping(path = "orders/remove/{orderId}")
-        void remove(@PathVariable(name="orderId") int orderId);
+    //@PostMapping("orders/create/{userId}")
+    @RequestLine("POST")
+    public String create(@PathVariable(name = "userId") int userId, URI baseUri);
 
-        @GetMapping(path = "orders/find/{orderId}")
-        Order find(@PathVariable(name="orderId") int orderId);
+    //@DeleteMapping(path = "orders/remove/{orderId}")
+    void remove(@PathVariable(name="orderId") int orderId);
 
-        @PostMapping(path = "orders/addItem/{orderId}/{itemId}")
-        void addItem(@PathVariable(name="orderId") int orderId,
-                            @PathVariable(name="itemId") int itemId);
+    //@GetMapping(path = "orders/find/{orderId}")
+    public Order find(@PathVariable(name="orderId") int orderId,URI baseUri);
 
-        @DeleteMapping(path = "orders/removeItem/{orderId}/{itemId}")
-        void removeItem(@PathVariable(name="orderId") int orderId,
-                               @PathVariable(name="itemId") int itemId);
+    //@PostMapping(path = "orders/addItem/{orderId}/{itemId}")
+    void addItem(@PathVariable(name="orderId") int orderId,
+                        @PathVariable(name="itemId") int itemId);
 
-        @PostMapping(path = "orders/checkout/{orderId}")
-        ResponseEntity checkout(@PathVariable(name="orderId") int orderId);
-    }
-    public String createOrder(int userId, int partitionId){
-        return delegate(partitionId).create(userId);
-    }
+    //@DeleteMapping(path = "orders/removeItem/{orderId}/{itemId}")
+    void removeItem(@PathVariable(name="orderId") int orderId,
+                           @PathVariable(name="itemId") int itemId);
 
-    public void removeOrder(int orderId,int partitionId){
-        delegate(partitionId).remove(orderId);
-    }
-
-    public Order findOrder(int orderId,int partitionId){
-        return delegate(partitionId).find(orderId);
-    }
-
-    public void addItemInOrder(int orderId,int itemId,int partitionId){
-        delegate(partitionId).addItem(orderId,itemId);
-    }
-
-    public void removeItemFromOrder(int orderId,int itemId,int partitionId){
-        delegate(partitionId).removeItem(orderId,itemId);
-    }
-
-    public ResponseEntity checkoutOrder(int orderId,int partitionId){
-        return delegate(partitionId).checkout(orderId);
-    }
-
-    public CustomCall delegate(int partitionId){
-        String serviceName="order-"+partitionId;
-        return this.feignClientBuilder.forType(CustomCall.class,serviceName).build();
-    }
+    //@PostMapping(path = "orders/checkout/{orderId}")
+    ResponseEntity checkout(@PathVariable(name="orderId") int orderId);
 
 }
