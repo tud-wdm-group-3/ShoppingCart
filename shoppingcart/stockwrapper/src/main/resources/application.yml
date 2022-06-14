@@ -2,7 +2,7 @@ spring:
   application:
     name: stocks-wrapper
 server:
-  port: 8083
+  port: ${SERVICE_PORT:8083}
   servlet:
     context-path: /stock
 partitions: 2

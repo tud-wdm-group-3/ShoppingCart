@@ -22,6 +22,12 @@ start() {
 
   kubectl apply -f "${CLUSTER}/manifests/ingress.yml"
 
+  kubectl apply -f "${CLUSTER}/manifests/eureka.yml"
+
+  kubectl apply -f "${CLUSTER}/manifests/orderwrapper.yml"
+  kubectl apply -f "${CLUSTER}/manifests/paymentwrapper.yml"
+  kubectl apply -f "${CLUSTER}/manifests/stockwrapper.yml"
+
   kubectl apply -f "${CLUSTER}/manifests/order.yml"
   kubectl apply -f "${CLUSTER}/manifests/payment.yml"
   kubectl apply -f "${CLUSTER}/manifests/stock.yml"
@@ -38,6 +44,12 @@ stop() {
   helm uninstall stock-db-1
 
   kubectl delete -f "${CLUSTER}/manifests/ingress.yml"
+
+  kubectl delete -f "${CLUSTER}/manifests/eureka.yml"
+
+  kubectl delete -f "${CLUSTER}/manifests/orderwrapper.yml"
+  kubectl delete -f "${CLUSTER}/manifests/paymentwrapper.yml"
+  kubectl delete -f "${CLUSTER}/manifests/stockwrapper.yml"
 
   kubectl delete -f "${CLUSTER}/manifests/order.yml"
   kubectl delete -f "${CLUSTER}/manifests/payment.yml"

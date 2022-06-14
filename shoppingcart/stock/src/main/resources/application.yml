@@ -3,7 +3,7 @@ server:
   
 spring:
   application:
-    name: stock
+    name: stock-${PARTITION_ID:0}
   jpa:
     properties:
       hibernate:
@@ -14,4 +14,7 @@ spring:
     show-sql: true
 eureka:
   instance:
-    instanceId: ${spring.cloud.client.hostname}:${spring.application.name}-${spring.application.instance_id}:${server.port}
+    instanceId: ${spring.cloud.client.hostname}:${spring.application.name}:${random.int}
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVICE_URL:localhost} #http://${EUREKA_SERVER:localhost}:8761/eureka
