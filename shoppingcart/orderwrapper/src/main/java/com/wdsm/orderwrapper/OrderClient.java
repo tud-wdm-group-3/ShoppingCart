@@ -15,28 +15,28 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 import java.net.URI;
 
-@FeignClient
+@FeignClient(name="Order")
 public interface OrderClient {
 
-    //@PostMapping("orders/create/{userId}")
-    @RequestLine("POST")
+    @PostMapping("orders/create/{userId}")
+    //@RequestLine("POST")
     public String create(@PathVariable(name = "userId") int userId, URI baseUri);
 
-    //@DeleteMapping(path = "orders/remove/{orderId}")
+    @DeleteMapping(path = "orders/remove/{orderId}")
     void remove(@PathVariable(name="orderId") int orderId);
 
-    //@GetMapping(path = "orders/find/{orderId}")
+    @GetMapping(path = "orders/find/{orderId}")
     public Order find(@PathVariable(name="orderId") int orderId,URI baseUri);
 
-    //@PostMapping(path = "orders/addItem/{orderId}/{itemId}")
+    @PostMapping(path = "orders/addItem/{orderId}/{itemId}")
     void addItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId);
 
-    //@DeleteMapping(path = "orders/removeItem/{orderId}/{itemId}")
+    @DeleteMapping(path = "orders/removeItem/{orderId}/{itemId}")
     void removeItem(@PathVariable(name="orderId") int orderId,
                            @PathVariable(name="itemId") int itemId);
 
-    //@PostMapping(path = "orders/checkout/{orderId}")
+    @PostMapping(path = "orders/checkout/{orderId}")
     ResponseEntity checkout(@PathVariable(name="orderId") int orderId);
 
 }

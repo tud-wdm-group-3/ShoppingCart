@@ -7,8 +7,8 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class })
-@EnableFeignClients
-@EnableDiscoveryClient
+//@EnableFeignClients
+//@EnableDiscoveryClient
 public class OrderWrapperApplication {
     public static void main(String[] args){
         SpringApplication.run(OrderWrapperApplication.class,args);

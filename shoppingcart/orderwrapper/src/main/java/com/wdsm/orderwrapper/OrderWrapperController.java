@@ -10,55 +10,65 @@ import feign.codec.Decoder;
 import feign.codec.Encoder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.openfeign.FeignClientProperties;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Random;
 
 @RestController
 @RequiredArgsConstructor
-@Import(FeignClientProperties.FeignClientConfiguration.class)
+//@Import(FeignClientProperties.FeignClientConfiguration.class)
 public class OrderWrapperController {
 
-    private final OrderWrapperService orderWrapperService=null;
-    @Autowired
-    private EurekaClient eurekaClient;
-    private final OrderClient orderClient;
-    private static final String baseUri="http://";
+    //private final OrderWrapperService orderWrapperService=null;
+    //private EurekaClient eurekaClient;
+    //private final OrderClient orderClient;
+    private static final String baseUri="http://order-";
+    @Value("${partitions}")
+    private int partitions;
 
-    @Autowired
-    public OrderWrapperController(Decoder decoder, Encoder encoder){
-        orderClient= Feign.builder().encoder(encoder).decoder(decoder).target(Target.EmptyTarget.create(OrderClient.class));
-    }
 
     //doesn't need partitioning
     @RequestMapping(value="/create/{userId}")
     public ResponseEntity<String> create(@PathVariable(name="userId") int userId){
-        //String res=orderWrapperService.createOrder(userId,figureOutPartition(-1));
-        //return ResponseEntity.ok().body(res);
-        try {
-            return ResponseEntity.ok().body(orderClient.create(userId, new URI(baseUri + "order-" + figureOutPartition(-1) + "orders/create/{" + userId + "}")));
+        try{
+             HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(-1)+"/orders/create/"+userId))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
 
-        }catch (Exception ex) {
-            return ResponseEntity.badRequest().build();
+        }catch (Exception ex){
+            return ResponseEntity.internalServerError().build();
         }
+
     }
 
     //needs partitioning
     @DeleteMapping("/remove/{orderId}")
     public void remove(@PathVariable(name="orderId") int orderId) {
-        orderWrapperService.removeOrder(orderId,figureOutPartition(orderId));
+        //orderWrapperService.removeOrder(orderId,figureOutPartition(orderId));
     }
     //needs partitioning
     @GetMapping(path = "/find/{orderId}")
-    public Order find(@PathVariable(name="orderId") int orderId) {
+    public ResponseEntity<String> find(@PathVariable(name="orderId") int orderId) {
         try {
-            return orderClient.find(orderId, new URI(baseUri + "order-" + figureOutPartition(orderId) + "orders/find/{" + orderId + "}"));
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+"/orders/find/"+orderId))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
-            return null;
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -66,18 +76,19 @@ public class OrderWrapperController {
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
     public void addItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
-        orderWrapperService.addItemInOrder(orderId,itemId,figureOutPartition(orderId));
+        //orderWrapperService.addItemInOrder(orderId,itemId,figureOutPartition(orderId));
     }
     //needs partitioning
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
     public void removeItem(@PathVariable(name="orderId") int orderId,
                            @PathVariable(name="itemId") int itemId) {
-        orderWrapperService.removeItemFromOrder(orderId,itemId,figureOutPartition(orderId));
+        //orderWrapperService.removeItemFromOrder(orderId,itemId,figureOutPartition(orderId));
     }
     //needs partitioning
     @PostMapping(path = "/checkout/{orderId}")
     public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
-        return orderWrapperService.checkoutOrder(orderId,figureOutPartition(orderId));
+        //return orderWrapperService.checkoutOrder(orderId,figureOutPartition(orderId));
+        return  ResponseEntity.ok().build();
     }
 
     /**
@@ -86,17 +97,10 @@ public class OrderWrapperController {
      * @return id of instance to receive request
      */
     int figureOutPartition(int id){
-        Applications apps=eurekaClient.getApplications();
-        int sum=1;
-        for(Application app:apps.getRegisteredApplications()){
-            String[] name=app.getName().split("-");
-            if(name[0].equalsIgnoreCase("order"))
-                sum++;
-        }
         if(id<0){
             Random r=new Random();
-            return r.nextInt(sum);
+            return r.nextInt(partitions);
         }else
-            return (id%sum);
+            return (id%partitions);
     }
 }
