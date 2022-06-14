@@ -36,11 +36,11 @@ public class OrderWrapperController {
 
 
     //doesn't need partitioning
-    @RequestMapping(value="/create/{userId}")
+    @PostMapping(value="/create/{userId}")
     public ResponseEntity<String> create(@PathVariable(name="userId") int userId){
         try{
              HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(baseUri+figureOutPartition(-1)+"/orders/create/"+userId))
+                    .uri(new URI(baseUri+figureOutPartition(-1)+":8080/orders/create/"+userId))
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
@@ -62,8 +62,8 @@ public class OrderWrapperController {
     public ResponseEntity<String> find(@PathVariable(name="orderId") int orderId) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(baseUri+figureOutPartition(orderId)+"/orders/find/"+orderId))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/find/"+orderId))
+                    .GET()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
