@@ -25,9 +25,12 @@ public class OrderController {
     }
 
     @DeleteMapping(path = "/remove/{orderId}")
-    public void remove(@PathVariable(name="orderId") int orderId) {
-        service.deleteOrder(orderId);
-        return;
+    public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
+        boolean completed = service.deleteOrder(orderId);
+        if (!completed)
+            return ResponseEntity.notFound().build();
+        else
+            return ResponseEntity.ok().build();
     }
 
     @GetMapping(path = "/find/{orderId}")
@@ -36,17 +39,25 @@ public class OrderController {
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
-    public void addItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                        @PathVariable(name="itemId") int itemId) {
-        service.addItemToOrder(orderId,itemId);
-        return;
+        boolean completed = service.addItemToOrder(orderId,itemId);
+        ResponseEntity response = ResponseEntity.ok().build();
+        if (!completed) {
+            response = ResponseEntity.badRequest().build();
+        }
+        return response;
     }
 
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
-    public void removeItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
-        service.removeItemFromOrder(orderId, itemId);
-        return;
+        boolean completed = service.removeItemFromOrder(orderId, itemId);
+        ResponseEntity response = ResponseEntity.ok().build();
+        if (!completed) {
+            response = ResponseEntity.badRequest().build();
+        }
+        return response;
     }
 
     @PostMapping(path = "/checkout/{orderId}")
@@ -55,10 +66,9 @@ public class OrderController {
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         if (!order.isPresent()) {
             response.setResult(ResponseEntity.notFound().build());
-            return response;
         } else {
             service.checkout(order.get(), response);
-            return response;
         }
+        return response;
     }
 }

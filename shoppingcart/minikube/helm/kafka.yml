@@ -1,24 +1,12 @@
 replicaCount: 1
+numPartitions: 1
+defaultReplicationFactor: 1
+autoCreateTopicsEnable: true
+
 persistence:
   size: 128Mi
+
 zookeeper:
   persistence:
     size: 128Mi
   replicaCount: 1
-provisioning:
-  replicationFactor: 2
-  numPartitions: 2
-  topics:
-    - toStockCheck
-    - toStockTransaction
-    - toStockRollback
-    - fromStockItemPrice
-    - fromPaymentPaid
-    - fromStockCheck
-    - fromPaymentTransaction
-    - fromPaymentUpdate
-    - fromStockTransaction
-    - toPaymentWasOk
-    - toPaymentTransaction
-    - toPaymentRollback
-    - toPaymentOrderExists

@@ -12,38 +12,44 @@ import java.util.*;
 public record StockController(StockService stockService) {
 
     @GetMapping(path="/find/{item_id}")
-    public HashMap<String, String> findItem(@PathVariable(name="item_id") int item_id){
+    public Object findItem(@PathVariable(name="item_id") int item_id){
         Optional<Stock> stock = stockService.findItem(item_id);
-        HashMap<String,String> res =new HashMap<>();
         if (stock.isPresent()){
-            res.put("amount", stock.get().getAmount().toString());
-            res.put("price", stock.get().getPrice().toString());
-            return res;
+            return Map.of("amount", stock.get().getAmount(), "price", stock.get().getPrice());
         }
-        res.put("error", "Item not found.");
-        return res;
+        ResponseEntity response = ResponseEntity.notFound().build();
+        return response;
     }
 
     @PostMapping(path="/subtract/{item_id}/{amount}")
     public ResponseEntity subtractStock(@PathVariable(name="item_id") int item_id,
                          @PathVariable(name="amount") int amount) {
+        if (amount <= 0)
+            return ResponseEntity.badRequest().build();
+
         if (stockService.subtractStock(item_id, amount))
             return ResponseEntity.ok().build();
         else
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.badRequest().build();
     }
 
     @PostMapping(path="/add/{item_id}/{amount}")
     public ResponseEntity addStock(@PathVariable(name="item_id") int item_id,
                                            @PathVariable(name="amount") int amount) {
+        if (amount <= 0)
+            return ResponseEntity.badRequest().build();
+
         if (stockService.addStock(item_id, amount))
             return ResponseEntity.ok().build();
         else
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.notFound().build();
     }
 
     @PostMapping(path="/item/create/{price}")
-    public Map<String, Integer> addItem(@PathVariable(name="price") double price) {
+    public Object addItem(@PathVariable(name="price") int price) {
+        if (price <= 0)
+            return ResponseEntity.badRequest().build();
+
         int itemId = stockService.createItem(price);
         return Map.of("item_id", itemId);
     }

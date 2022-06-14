@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: stock-0
-          image: docker.io/ngavalas/stock:latest
+          image: stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -39,9 +39,13 @@ spec:
               value: stock-db-0-postgresql
             - name: SERVICE_PORT
               value: "8080"
-            - name: KAFKA_HOST
+            - name: KAFKA_SERVERS_CSL
               value: kafka
-          imagePullPolicy: Always
+            - name: PARTITION_ID
+              value: "0"
+            - name: EUREKA_SERVICE_URL
+              value: "http://eureka:8761/eureka"
+          imagePullPolicy: Never #Always
           resources:
             limits:
               memory: "500Mi"
@@ -83,7 +87,7 @@ spec:
     spec:
       containers:
         - name: stock-1
-          image: docker.io/ngavalas/stock:latest
+          image: stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -95,9 +99,13 @@ spec:
               value: stock-db-1-postgresql
             - name: SERVICE_PORT
               value: "8080"
-            - name: KAFKA_HOST
+            - name: KAFKA_SERVERS_CSL
               value: kafka
-          imagePullPolicy: Always
+            - name: PARTITION_ID
+              value: "1"
+            - name: EUREKA_SERVICE_URL
+              value: "http://eureka:8761/eureka"
+          imagePullPolicy: Never #Always
           resources:
             limits:
               memory: "500Mi"

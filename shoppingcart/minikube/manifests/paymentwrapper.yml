@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymentwrapper
+spec:
+  type: ClusterIP
+  selector:
+    component: paymentwrapper
+  ports:
+    - port: 8080
+      name: http
+      targetPort: 8080
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentwrapper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: paymentwrapper
+  template:
+    metadata:
+      labels:
+        component: paymentwrapper
+    spec:
+      containers:
+        - name: paymentwrapper
+          image: paymentwrapper:latest
+          env:
+            - name: SERVICE_PORT
+              value: "8080"
+            - name: EUREKA_SERVER
+              value: eureka
+            - name: EUREKA_SERVICE_URL
+              value: "http://eureka:8761/eureka"
+          imagePullPolicy: Never #Always
+          resources:
+            limits:
+              memory: "500Mi"
+              cpu: "0.5"
+            requests:
+              memory: "500Mi"
+              cpu: "0.5"
+          command: ["java"]
+          args: ["-jar", "/srv/paymentwrapper/target/paymentwrapper-1.0-SNAPSHOT.jar"]
+          ports:
+            - containerPort: 8080

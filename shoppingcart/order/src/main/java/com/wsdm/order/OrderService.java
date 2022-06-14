@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
 
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -35,11 +36,20 @@ public class OrderService {
         int globalId = order.getLocalId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
         order.setOrderId(globalId);
 
+        transactionHandler.sendOrderExists(globalId, 0);
+
         return globalId;
     }
 
-    public void deleteOrder(int orderId){
-        findOrder(orderId).ifPresent(repository::delete);
+    public boolean deleteOrder(int orderId){
+        transactionHandler.sendOrderExists(orderId, 1);
+        Optional<Order> optOrder = findOrder(orderId);
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            repository.delete(order);
+            return true;
+        }
+        return false;
     }
 
     public Optional<Order> findOrder(int orderId){
@@ -48,28 +58,50 @@ public class OrderService {
         return repository.findById(localId);
     }
 
-    public void addItemToOrder(int orderId, int itemId){
+    public boolean addItemToOrder(int orderId, int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
+
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (!items.contains(itemId)) {
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
                 items.add(itemId);
+
+                // Increase order's total cost
+                int price = transactionHandler.getItemPrice(itemId);
+                order.setTotalCost(order.getTotalCost() + price);
+
                 repository.save(order);
+                return true;
             }
         }
+        return false;
     }
 
-    public void removeItemFromOrder(int orderId,int itemId){
+    public boolean removeItemFromOrder(int orderId,int itemId){
+        // Check if itemId exists
+        if (!transactionHandler.itemExists(itemId)) return false;
+
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            List<Integer> items = order.getItems();
-            if (items.contains(itemId)) {
-                items.remove(itemId);
-                repository.save(order);
+            if (!order.isPaid()) {
+                List<Integer> items = order.getItems();
+                if (items.contains(itemId)) {
+                    items.remove(itemId);
+
+                    // Decrease order's total cost
+                    int price = transactionHandler.getItemPrice(itemId);
+                    order.setTotalCost(order.getTotalCost() - price);
+
+                    repository.save(order);
+                    return true;
+                }
             }
         }
+        return false;
     }
 
     public void checkout(Order order, DeferredResult<ResponseEntity> response){
