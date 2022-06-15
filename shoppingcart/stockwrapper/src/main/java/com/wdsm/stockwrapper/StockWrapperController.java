@@ -27,7 +27,7 @@ public class StockWrapperController {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+figureOutPartition(item_id)+":8080/stock/find/"+item_id))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .GET()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());

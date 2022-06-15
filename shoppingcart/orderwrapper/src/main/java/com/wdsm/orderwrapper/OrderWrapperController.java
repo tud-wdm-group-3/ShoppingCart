@@ -43,7 +43,7 @@ public class OrderWrapperController {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/remove/"+orderId))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .DELETE()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
         }catch (Exception ex){
@@ -87,7 +87,7 @@ public class OrderWrapperController {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/removeItem/"+orderId+"/"+itemId))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .DELETE()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());

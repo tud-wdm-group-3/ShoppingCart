@@ -58,7 +58,7 @@ public class PaymentWrapperController {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+figureOutPartition(userId)+":8080/payment/status/"+userId+"/"+orderId))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .GET()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
@@ -103,7 +103,7 @@ public class PaymentWrapperController {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+figureOutPartition(userId)+":8080/payment/find_user/"+userId))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .GET()
                     .build();
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
