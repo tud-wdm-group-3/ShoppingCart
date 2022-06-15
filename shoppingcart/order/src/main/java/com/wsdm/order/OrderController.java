@@ -21,11 +21,14 @@ public class OrderController {
     
     @PostMapping(path = "/create/{userId}")
     public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
-        return Map.of("order_id", service.createOrder(userId));
+        int orderId = service.createOrder(userId);
+        System.out.println("Received create order request with userId " + userId + " new order " + orderId);
+        return Map.of("order_id", orderId);
     }
 
     @DeleteMapping(path = "/remove/{orderId}")
     public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
+        System.out.println("Received remove order request with orderId " + orderId);
         boolean completed = service.deleteOrder(orderId);
         if (!completed)
             return ResponseEntity.notFound().build();
@@ -35,12 +38,14 @@ public class OrderController {
 
     @GetMapping(path = "/find/{orderId}")
     public Optional<Order> find(@PathVariable(name="orderId") int orderId) {
+        System.out.println("Received find order request with orderId " + orderId);
         return service.findOrder(orderId);
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
     public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                        @PathVariable(name="itemId") int itemId) {
+        System.out.println("Add item " + itemId + " to orderId " + orderId);
         boolean completed = service.addItemToOrder(orderId,itemId);
         ResponseEntity response = ResponseEntity.ok().build();
         if (!completed) {
@@ -52,6 +57,7 @@ public class OrderController {
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
     public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
+        System.out.println("Remove item " + itemId + " to orderId " + orderId);
         boolean completed = service.removeItemFromOrder(orderId, itemId);
         ResponseEntity response = ResponseEntity.ok().build();
         if (!completed) {
@@ -62,6 +68,7 @@ public class OrderController {
 
     @PostMapping(path = "/checkout/{orderId}")
     public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
+        System.out.println("Checkout order " + orderId);
         Optional<Order> order = service.findOrder(orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         if (!order.isPresent()) {
