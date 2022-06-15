@@ -130,7 +130,7 @@ public class PaymentService {
             return ResponseEntity.notFound().build();
         }
     }
-  
+
     public Integer registerUser() {
         Payment payment = Payment.builder()
                 .credit(0)

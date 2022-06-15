@@ -1,13 +1,8 @@
 spring:
   application:
     name: orders-wrapper
-
 server:
   port: ${SERVICE_PORT:8081}
   servlet:
     context-path: /orders
-
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_SERVICE_URL:http://localhost:8761/eureka} #http://${EUREKA_SERVER:localhost}:8761/eureka
+partitions: 2
