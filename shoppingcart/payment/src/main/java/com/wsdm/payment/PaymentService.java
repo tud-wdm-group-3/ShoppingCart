@@ -1,17 +1,18 @@
 package com.wsdm.payment;
 
-import com.wsdm.payment.persistentlog.LogRepository;
-import com.wsdm.payment.persistentlog.PersistentMap;
 import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.async.DeferredResult;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,10 +32,10 @@ public class PaymentService {
     private Map<Integer, DeferredResult<ResponseEntity>> pendingPaymentResponses = new HashMap<>();
 
     @Autowired
-    public PaymentService(PaymentRepository paymentRepository, LogRepository logRepository) {
+    public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
 
-        orderStatuses = new PersistentMap<Map>("orderStatuses", logRepository, Map.class);
+        orderStatuses = new HashMap<>();
     }
 
     public void makePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response) {

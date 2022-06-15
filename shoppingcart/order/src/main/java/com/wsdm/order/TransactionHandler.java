@@ -49,8 +49,8 @@ public class TransactionHandler {
         this.orderRepository = orderRepository;
         this.logRepository = logRepository;
 
-        this.stockCheckLog = new PersistentMap<Map>("stockCheckLog", logRepository, Map.class);
-        this.transactionLog = new PersistentMap<Map>("transactionLog", logRepository, Map.class);
+        this.stockCheckLog = new HashMap<>();
+        this.transactionLog = new HashMap<>();
     }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
