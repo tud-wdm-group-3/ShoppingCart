@@ -1,0 +1,17 @@
+FROM maven:3.6.3-openjdk-17-slim
+
+WORKDIR /srv
+
+COPY ./payment /srv/payment
+COPY ./stock /srv/stock
+COPY ./order /srv/order
+COPY ./paymentwrapper /srv/paymentwrapper
+COPY ./stockwrapper /srv/stockwrapper
+COPY ./orderwrapper /srv/orderwrapper
+COPY ./eureka /srv/eureka
+COPY ./pom.xml /srv
+
+RUN mvn clean install
+RUN cd eureka && mvn clean package spring-boot:repackage
+
+CMD ["java", "-jar", "/srv/eureka/target/eureka-1.0-SNAPSHOT.jar"]

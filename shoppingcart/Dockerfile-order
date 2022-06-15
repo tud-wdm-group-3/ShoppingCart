@@ -5,8 +5,13 @@ WORKDIR /srv
 COPY ./payment /srv/payment
 COPY ./stock /srv/stock
 COPY ./order /srv/order
+COPY ./paymentwrapper /srv/paymentwrapper
+COPY ./stockwrapper /srv/stockwrapper
+COPY ./orderwrapper /srv/orderwrapper
+COPY ./eureka /srv/eureka
 COPY ./pom.xml /srv
 
-RUN mvn clean package spring-boot:repackage
+RUN mvn clean install
+RUN cd order && mvn clean package spring-boot:repackage
 
 CMD ["java", "-jar", "/srv/order/target/order-1.0-SNAPSHOT.jar"]

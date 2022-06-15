@@ -5,16 +5,13 @@ import com.wsdm.payment.persistentlog.PersistentMap;
 import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.async.DeferredResult;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -119,8 +116,6 @@ public class PaymentService {
         return true;
     }
 
-
-
     public Object getPaymentStatus(Integer userId, Integer orderId) {
         if (orderStatuses.containsKey(orderId)) {
             if (userId == orderStatuses.get(orderId).get("userId")) {
@@ -134,7 +129,7 @@ public class PaymentService {
             return ResponseEntity.notFound().build();
         }
     }
-
+  
     public Integer registerUser() {
         Payment payment = Payment.builder()
                 .credit(0)
@@ -157,12 +152,12 @@ public class PaymentService {
     public boolean addFunds(Integer userId, Integer amount) {
         Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
-            return false;
+            throw new IllegalStateException("user with Id " + userId + " does not exist");
         }
         Payment payment = optPaymentUser.get();
         payment.setCredit(payment.getCredit() + amount);
         paymentRepository.save(payment);
-        return true;
+        return true;  // TODO return false when fail for some reason
     }
 
     @Autowired
@@ -175,11 +170,11 @@ public class PaymentService {
         int userId = (int) request.value().get("userId");
         int cost = (int) request.value().get("totalCost");
         System.out.println(request.value());
-        Optional<Payment> optPaymentUser = findUser(userId);
-        if (!optPaymentUser.isPresent()) {
+        Optional<Payment> optPayment = findUser(userId);
+        if (!optPayment.isPresent()) {
             throw new IllegalStateException("unknown user");
         }
-        Payment payment = optPaymentUser.get();
+        Payment payment = optPayment.get();
         System.out.println(payment);
         int credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
@@ -187,13 +182,13 @@ public class PaymentService {
             System.out.println("enough");
             payment.setCredit(credit - cost);
             paymentRepository.save(payment);
-            orderStatuses.put(orderId,  Map.of("userId", userId, "amountPaid", cost, "paid", true));
         }
         System.out.println(payment);
         int partition = orderId % Environment.numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
+
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
@@ -207,9 +202,6 @@ public class PaymentService {
         user.setCredit(credit + refund);
         paymentRepository.save(user);
     }
-
-
-
 
     /**
      * Used to initialize cache of orderIds, so false relativeToCurrent.

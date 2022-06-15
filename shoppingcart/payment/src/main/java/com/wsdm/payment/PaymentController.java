@@ -2,7 +2,6 @@ package com.wsdm.payment;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
 
@@ -41,16 +40,13 @@ public class PaymentController {
 
     @PostMapping(path="create_user")
     public Map<String, Integer> registerUser() {
+        // TODO: return JSON instead of just a single int
         return Map.of("user_id", paymentService.registerUser());
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
-    public Object addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
-        if (amount <= 0){
-            return ResponseEntity.badRequest().build();
-        }
-        boolean completed =  paymentService.addFunds(userId, amount);
-        return Map.of("done", completed);
+    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
+        return paymentService.addFunds(userId, amount);
     }
 
     @GetMapping(path="find_user/{user_id}")
