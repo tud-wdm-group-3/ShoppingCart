@@ -22,7 +22,7 @@ start() {
 
   kubectl apply -f "${CLUSTER}/manifests/ingress.yml"
 
-  kubectl apply -f "${CLUSTER}/manifests/eureka.yml"
+#  kubectl apply -f "${CLUSTER}/manifests/eureka.yml"
 
   kubectl apply -f "${CLUSTER}/manifests/orderwrapper.yml"
   kubectl apply -f "${CLUSTER}/manifests/paymentwrapper.yml"
@@ -45,7 +45,7 @@ stop() {
 
   kubectl delete -f "${CLUSTER}/manifests/ingress.yml"
 
-  kubectl delete -f "${CLUSTER}/manifests/eureka.yml"
+#  kubectl delete -f "${CLUSTER}/manifests/eureka.yml"
 
   kubectl delete -f "${CLUSTER}/manifests/orderwrapper.yml"
   kubectl delete -f "${CLUSTER}/manifests/paymentwrapper.yml"
