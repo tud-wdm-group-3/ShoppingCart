@@ -19,6 +19,7 @@ public class PaymentController {
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
+        System.out.println("Received pay from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         paymentService.makePayment(userId, orderId, amount, response);
 
@@ -27,6 +28,7 @@ public class PaymentController {
 
     @PostMapping(path="cancel/{user_id}/{order_id}")
     public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
+        System.out.println("Received cancel from user " + userId + " for order " + orderId);
         boolean completed = paymentService.cancelPayment(userId, orderId);
         if (!completed) {
             ResponseEntity.badRequest().build();
@@ -36,25 +38,26 @@ public class PaymentController {
 
     @GetMapping(path="status/{user_id}/{order_id}")
     public Object getStatus(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
+        System.out.println("Get status from user " + userId + " and order " + orderId);
         return paymentService.getPaymentStatus(userId, orderId);
     }
 
     @PostMapping(path="create_user")
     public Map<String, Integer> registerUser() {
-        return Map.of("user_id", paymentService.registerUser());
+        int userId = paymentService.registerUser();
+        System.out.println("Registered user with userId " + userId);
+        return Map.of("user_id", userId);
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
-    public Object addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
-        if (amount <= 0){
-            return ResponseEntity.badRequest().build();
-        }
-        boolean completed =  paymentService.addFunds(userId, amount);
-        return Map.of("done", completed);
+    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
+        System.out.println("Adding " + amount + " to funds of user " + userId);
+        return paymentService.addFunds(userId, amount);
     }
 
     @GetMapping(path="find_user/{user_id}")
     public Optional<Payment> findUser(@PathVariable("user_id") Integer userId) {
+        System.out.println("Finding user " + userId);
         return paymentService.findUser(userId);
     }
 }

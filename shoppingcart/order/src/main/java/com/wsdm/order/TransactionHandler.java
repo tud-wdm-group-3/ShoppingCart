@@ -2,8 +2,6 @@ package com.wsdm.order;
 
 import com.wsdm.order.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import com.wsdm.order.persistentlog.LogRepository;
-import com.wsdm.order.persistentlog.PersistentMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -43,11 +41,9 @@ public class TransactionHandler {
     private KafkaTemplate<Integer, Object> kafkaTemplate;
 
     final private OrderRepository orderRepository;
-    final private LogRepository logRepository;
 
-    public TransactionHandler(OrderRepository orderRepository, LogRepository logRepository) {
+    public TransactionHandler(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
-        this.logRepository = logRepository;
 
         this.stockCheckLog = new HashMap<>();
         this.transactionLog = new HashMap<>();
