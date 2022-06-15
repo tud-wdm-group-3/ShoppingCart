@@ -19,7 +19,7 @@ public class PaymentController {
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
-        System.out.println("Received pay on " + Environment.myPaymentInstanceId + " from user " + userId + " for order " + orderId);
+        System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         paymentService.makePayment(userId, orderId, amount, response);
 

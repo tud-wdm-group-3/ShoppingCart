@@ -22,7 +22,7 @@ public class OrderController {
     @PostMapping(path = "/create/{userId}")
     public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
         int orderId = service.createOrder(userId);
-        System.out.println("Received create order on " + Environment.myOrderInstanceId + " request with userId " + userId + " new order " + orderId);
+        System.out.println("Received create order request with userId " + userId + " new order " + orderId);
         return Map.of("order_id", orderId);
     }
 
