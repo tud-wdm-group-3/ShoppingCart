@@ -1,56 +1,113 @@
 package com.wdsm.orderwrapper;
 
-import com.netflix.discovery.EurekaClient;
-import com.netflix.discovery.shared.Application;
-import com.netflix.discovery.shared.Applications;
-import com.wsdm.order.Order;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Random;
 
 @RestController
 @RequiredArgsConstructor
 public class OrderWrapperController {
 
-    private final OrderWrapperService orderWrapperService;
-    @Autowired
-    private EurekaClient eurekaClient;
+    private static final String baseUri="http://order-";
+    @Value("${partitions}")
+    private int partitions;
+
 
     //doesn't need partitioning
-    @RequestMapping(value="/create/{userId}")
-    public ResponseEntity<String> create(@PathVariable(name="userId") int userId){
-        String res=orderWrapperService.createOrder(userId,figureOutPartition(-1));
-        return ResponseEntity.ok().body(res);
+    @PostMapping(value="/create/{userId}")
+    public ResponseEntity create(@PathVariable(name="userId") int userId){
+        try{
+             HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(-1)+":8080/orders/create/"+userId))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+
+        }catch (Exception ex){
+            return ResponseEntity.internalServerError().build();
+        }
+
     }
+
     //needs partitioning
     @DeleteMapping("/remove/{orderId}")
     public void remove(@PathVariable(name="orderId") int orderId) {
-        orderWrapperService.removeOrder(orderId,figureOutPartition(orderId));
+        try{
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/remove/"+orderId))
+                    .DELETE()
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+        }catch (Exception ex){
+            System.out.println("Exception when calling partition:"+ ex.getMessage());
+        }
     }
     //needs partitioning
     @GetMapping(path = "/find/{orderId}")
-    public Order find(@PathVariable(name="orderId") int orderId){
-        return orderWrapperService.findOrder(orderId,figureOutPartition(orderId));
+    public ResponseEntity find(@PathVariable(name="orderId") int orderId) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/find/"+orderId))
+                    .GET()
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
+
     //needs partitioning
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
-    public void addItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
-        orderWrapperService.addItemInOrder(orderId,itemId,figureOutPartition(orderId));
+        try{
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/addItem/"+orderId+"/"+itemId))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        }catch (Exception ex){
+            return ResponseEntity.internalServerError().build();
+        }
     }
     //needs partitioning
     @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
-    public void removeItem(@PathVariable(name="orderId") int orderId,
+    public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                            @PathVariable(name="itemId") int itemId) {
-        orderWrapperService.removeItemFromOrder(orderId,itemId,figureOutPartition(orderId));
+        try{
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/removeItem/"+orderId+"/"+itemId))
+                    .DELETE()
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        }catch (Exception ex){
+            return ResponseEntity.internalServerError().build();
+        }
     }
     //needs partitioning
     @PostMapping(path = "/checkout/{orderId}")
     public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
-        return orderWrapperService.checkoutOrder(orderId,figureOutPartition(orderId));
+        try{
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(baseUri+figureOutPartition(orderId)+":8080/orders/checkout/"+orderId))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        }catch (Exception ex){
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
@@ -59,17 +116,10 @@ public class OrderWrapperController {
      * @return id of instance to receive request
      */
     int figureOutPartition(int id){
-        Applications apps=eurekaClient.getApplications();
-        int sum=0;
-        for(Application app:apps.getRegisteredApplications()){
-            String[] name=app.getName().split("-");
-            if(name[0].equalsIgnoreCase("order"))
-                sum++;
-        }
         if(id<0){
             Random r=new Random();
-            return r.nextInt(sum);
+            return r.nextInt(partitions);
         }else
-            return (id%sum);
+            return (id%partitions);
     }
 }
