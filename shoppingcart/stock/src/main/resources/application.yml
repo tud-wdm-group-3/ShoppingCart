@@ -18,3 +18,5 @@ eureka:
   client:
     serviceUrl:
       defaultZone: ${EUREKA_SERVICE_URL:localhost} #http://${EUREKA_SERVER:localhost}:8761/eureka
+
+PARTITION_ID: ${PARTITION_ID:0}

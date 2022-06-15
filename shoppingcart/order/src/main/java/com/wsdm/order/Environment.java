@@ -10,6 +10,6 @@ public class Environment {
 
     public static int numOrderInstances = 2;
 
-    @Value("${PARTITION_ID:0}")
+    @Value("${PARTITION_ID}")
     public static int myOrderInstanceId;
 }
