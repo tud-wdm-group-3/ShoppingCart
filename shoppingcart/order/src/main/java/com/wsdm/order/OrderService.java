@@ -2,6 +2,7 @@ package com.wsdm.order;
 
 import com.wsdm.order.utils.Partitioner;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -15,8 +16,17 @@ import org.springframework.web.context.request.async.DeferredResult;
 import java.util.*;
 import java.util.concurrent.Future;
 
+
 @Service
 public class OrderService {
+    @Value("${PARTITION_ID}")
+    private int myOrderInstanceId;
+
+    private int numStockInstances = 2;
+
+    private int numPaymentInstances = 2;
+
+    private int numOrderInstances = 2;
 
     final OrderRepository repository;
 
@@ -34,7 +44,7 @@ public class OrderService {
         order.setUserId(userId);
         repository.save(order);
 
-        int globalId = order.getLocalId() * Environment.numOrderInstances + Environment.myOrderInstanceId;
+        int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
         order.setOrderId(globalId);
         repository.save(order);
 
@@ -58,7 +68,7 @@ public class OrderService {
 
     public Optional<Order> findOrder(int orderId){
         // Convert to local id
-        int localId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
+        int localId = (orderId - myOrderInstanceId) / numOrderInstances;
         return repository.findById(localId);
     }
 
@@ -166,7 +176,7 @@ public class OrderService {
             throw new AssertionError("Payment made for unexisting order");
         }
 
-        int partition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
         Order order = optOrder.get();
         if (mayChangeOrder(order) && order.getTotalCost() == amount) {
             Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);

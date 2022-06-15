@@ -3,6 +3,7 @@ package com.wsdm.payment;
 import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -18,6 +19,15 @@ import java.util.Optional;
 
 @Service
 public class PaymentService {
+
+    @Value("${PARTITION_ID}")
+    private int myPaymentInstanceId;
+
+    private int numStockInstances = 2;
+
+    private int numPaymentInstances = 2;
+
+    private int numOrderInstances = 2;
 
     private final PaymentRepository paymentRepository;
 
@@ -65,7 +75,7 @@ public class PaymentService {
             orderStatuses.put(orderId, curOrderStatus);
 
             pendingPaymentResponses.put(orderId, response);
-            int partition = Partitioner.getPartition(orderId, Environment.numOrderInstances);
+            int partition = Partitioner.getPartition(orderId, numOrderInstances);
 
             Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
             fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
@@ -112,7 +122,7 @@ public class PaymentService {
         payment.setCredit(credit + refund);
         paymentRepository.save(payment);
 
-        int partition = Partitioner.getPartition(orderId, Environment.numOrderInstances);
+        int partition = Partitioner.getPartition(orderId, numOrderInstances);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId);
         fromPaymentTemplate.send("fromPaymentCancelled", partition, orderId, data);
         return true;
@@ -139,7 +149,7 @@ public class PaymentService {
 
         // Convert local to global id
         paymentRepository.save(payment);
-        int globalId = payment.getLocalId() * Environment.numPaymentInstances + Environment.myPaymentInstanceId;
+        int globalId = payment.getLocalId() * numPaymentInstances + myPaymentInstanceId;
         payment.setUserId(globalId);
         paymentRepository.save(payment);
 
@@ -147,7 +157,7 @@ public class PaymentService {
     }
 
     public Optional<Payment> findUser(Integer userId) {
-        int localId = (userId - Environment.myPaymentInstanceId) / Environment.numPaymentInstances;
+        int localId = (userId - myPaymentInstanceId) / numPaymentInstances;
         return paymentRepository.findById(localId);
     }
 
@@ -186,7 +196,7 @@ public class PaymentService {
             paymentRepository.save(payment);
         }
         System.out.println(payment);
-        int partition = orderId % Environment.numOrderInstances;
+        int partition = orderId % numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", enoughCredit);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }

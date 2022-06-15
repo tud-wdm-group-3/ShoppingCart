@@ -3,6 +3,7 @@ package com.wsdm.order;
 import com.wsdm.order.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -15,6 +16,15 @@ import java.util.*;
 
 @Service
 public class TransactionHandler {
+
+    @Value("${PARTITION_ID}")
+    private int myOrderInstanceId;
+
+    private int numStockInstances = 2;
+
+    private int numPaymentInstances = 2;
+
+    private int numOrderInstances = 2;
 
     /**
      * Maps orderId to deferredResult.
@@ -63,7 +73,7 @@ public class TransactionHandler {
         System.out.println("sending stock check");
 
         // STEP 1: SEND STOCK CHECK
-        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), Environment.numStockInstances);
+        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), numStockInstances);
 
         currentCheckoutOrders.put(order.getOrderId(), order);
         Map<String, Object> log = new HashMap<>();
@@ -123,7 +133,7 @@ public class TransactionHandler {
         // STEP 3: START PAYMENT TRANSACTION
         int orderId = order.getOrderId();
         int userId = order.getUserId();
-        int partition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "totalCost", order.getTotalCost());
 
         kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
@@ -149,7 +159,7 @@ public class TransactionHandler {
         System.out.println("sending stock transaction for order" + order);
 
         // STEP 5: START STOCK TRANSACTION
-        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), Environment.numStockInstances);
+        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), numStockInstances);
         Map<String, Object> log = new HashMap<>();
         for (int partitionId : stockPartition.keySet()) {
             log.put(Integer.toString(partitionId), true);
@@ -198,7 +208,7 @@ public class TransactionHandler {
 
     public void sendOrderExists(Order order, int method) {
         int userId = order.getUserId();
-        int partition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
 
         Map<String, Integer> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
         kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), reqValue);
@@ -206,7 +216,7 @@ public class TransactionHandler {
 
     private void sendStockRollback(Order order, Map<Integer, Boolean> confirmations) {
         System.out.println("Sending stock rollback for order " + order + " confirmations " + confirmations);
-        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), Environment.numStockInstances);
+        Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), numStockInstances);
         for (int stockId : confirmations.keySet()) {
             if (confirmations.get(stockId)) {
                 // This stock id returned true, so we must rollback
@@ -219,7 +229,7 @@ public class TransactionHandler {
     private void sendPaymentRollback(Order order) {
         System.out.println("Sending payment rollback for order" + order);
         int userId = order.getUserId();
-        int paymentPartition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
+        int paymentPartition = Partitioner.getPartition(userId, numPaymentInstances);
         Map<String, Object> data = Map.of("userId", userId, "totalCost", order.getTotalCost());
         kafkaTemplate.send("toPaymentRollback", paymentPartition, order.getOrderId(), data);
     }
