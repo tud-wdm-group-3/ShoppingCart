@@ -12,9 +12,8 @@
     <module>order</module>
     <module>stock</module>
     <module>payment</module>
-    <module>eureka</module>
-      <module>orderwrapper</module>
-      <module>paymentwrapper</module>
+    <module>orderwrapper</module>
+    <module>paymentwrapper</module>
     <module>stockwrapper</module>
   </modules>
 
