@@ -167,7 +167,7 @@ public class PaymentService {
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getPaymentTransaction(ConsumerRecord<Integer, Map<String, Object>> request) {
+    protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
@@ -212,7 +212,7 @@ public class PaymentService {
      */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
-    protected void orderExists(ConsumerRecord<Integer, Map<String, Integer>> request) {
+    protected void orderExists(Map<String, Integer> request) {
         System.out.println("Received order exists " + request);
         int orderId = request.get("orderId");
         int method = request.get("method");

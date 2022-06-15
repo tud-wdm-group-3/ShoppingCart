@@ -121,9 +121,10 @@ public class TransactionHandler {
         System.out.println("sending payment check for order" + order);
 
         // STEP 3: START PAYMENT TRANSACTION
+        int orderId = order.getOrderId();
         int userId = order.getUserId();
         int partition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
-        Map<String, Object> data = Map.of("userId", userId, "totalCost", order.getTotalCost());
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "totalCost", order.getTotalCost());
 
         kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
     }
