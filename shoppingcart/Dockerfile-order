@@ -8,7 +8,6 @@ COPY ./order /srv/order
 COPY ./paymentwrapper /srv/paymentwrapper
 COPY ./stockwrapper /srv/stockwrapper
 COPY ./orderwrapper /srv/orderwrapper
-COPY ./eureka /srv/eureka
 COPY ./pom.xml /srv
 
 RUN mvn clean package spring-boot:repackage
