@@ -11,6 +11,11 @@ import java.util.*;
 @RequestMapping("stock")
 public record StockController(StockService stockService) {
 
+    @GetMapping(path = "/dump")
+    public List<Stock> dump() {
+        return stockService.stockRepository.findAll();
+    }
+
     @GetMapping(path="/find/{item_id}")
     public Object findItem(@PathVariable(name="item_id") int item_id){
         System.out.println("Finding item " + item_id);

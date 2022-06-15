@@ -14,7 +14,7 @@ import java.util.*;
 @Service
 public class StockService {
 
-    private final StockRepository stockRepository;
+    final StockRepository stockRepository;
 
     @Value("${PARTITION_ID}")
     private int myStockInstanceId;

@@ -18,6 +18,11 @@ public class OrderController {
 
     @Autowired
     OrderService service;
+
+    @GetMapping(path = "/dump")
+    public List<Order> dump() {
+        return service.repository.findAll();
+    }
     
     @PostMapping(path = "/create/{userId}")
     public Map<String, Integer> create(@PathVariable(name="userId") int userId) {

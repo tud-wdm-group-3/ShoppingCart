@@ -29,7 +29,7 @@ public class PaymentService {
 
     private int numOrderInstances = 2;
 
-    private final PaymentRepository paymentRepository;
+    final PaymentRepository paymentRepository;
 
     /**
      * A log of current order statuses
