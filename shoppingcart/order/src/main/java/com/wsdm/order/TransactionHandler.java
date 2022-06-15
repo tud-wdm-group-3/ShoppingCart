@@ -163,19 +163,6 @@ public class TransactionHandler {
         }
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentUpdate",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
-    private void getPaymentUpdate(Integer orderId) {
-        int localOrderId = (orderId - Environment.myOrderInstanceId) / Environment.numOrderInstances;
-        Optional<Order> optOrder = orderRepository.findById(localOrderId);
-        if (optOrder.isEmpty()) {
-            throw new IllegalStateException("Order with Id " + orderId + " does not exist");
-        }
-        Order order = optOrder.get();
-        order.setPaid(true);
-        orderRepository.save(order);
-    }
-
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
