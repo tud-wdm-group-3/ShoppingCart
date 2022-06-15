@@ -21,17 +21,20 @@ public class Order {
     private int localId;
 
     private int orderId;
-    private boolean paid;
+
     @ElementCollection
     private List<Integer> items;
     private int userId;
     private int totalCost;
+    private boolean paid;
+    private boolean inCheckout;
 
     public Order(int userId)
     {
-        paid=false;
-        items=new ArrayList<>();
-        userId=userId;
-        totalCost=0;
+        items = new ArrayList<>();
+        userId = userId;
+        totalCost = 0;
+        paid = false;
+        inCheckout = false;
     }
 }
