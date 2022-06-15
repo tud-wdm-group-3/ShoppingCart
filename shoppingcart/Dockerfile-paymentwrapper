@@ -1,4 +1,4 @@
-FROM maven:3.6.3-openjdk-17-slim
+FROM maven:3.6.3-openjdk-17-slim as builder
 
 WORKDIR /srv
 
@@ -11,7 +11,10 @@ COPY ./orderwrapper /srv/orderwrapper
 COPY ./eureka /srv/eureka
 COPY ./pom.xml /srv
 
-RUN mvn clean install
-RUN cd paymentwrapper && mvn clean package spring-boot:repackage
+RUN mvn clean package spring-boot:repackage
+
+FROM maven:3.6.3-openjdk-17-slim
+
+COPY --from=builder /srv/paymentwrapper/target/paymentwrapper-1.0-SNAPSHOT.jar /srv/paymentwrapper/target/paymentwrapper-1.0-SNAPSHOT.jar
 
 CMD ["java", "-jar", "/srv/paymentwrapper/target/paymentwrapper-1.0-SNAPSHOT.jar"]

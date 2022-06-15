@@ -88,6 +88,7 @@ public class StockService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockCheck",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
+        System.out.println("Received stock check " + request);
         int orderId = request.key();
         int partition = orderId % Environment.numOrderInstances;
 
@@ -116,6 +117,7 @@ public class StockService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
+        System.out.println("Received stock transaction " + request);
         int orderId = request.key();
         int orderPartition = orderId % Environment.numOrderInstances;
 
@@ -151,6 +153,8 @@ public class StockService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockRollback(ConsumerRecord<Integer, List<Integer>> request) {
+        System.out.println("Received stock rollback " + request);
+
         // Count items
         Map<Integer, Integer> itemIdToAmount = countItems(request.value());
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
