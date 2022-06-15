@@ -135,6 +135,7 @@ public class OrderService {
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         int price = item.get("price");
+        System.out.println("Received item cache " + itemId + " with price " + price);
 
         itemPrices.put(itemId, price);
     }
@@ -156,6 +157,8 @@ public class OrderService {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
         int amount = request.get("amount");
+
+        System.out.println("Received payment made with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
 
@@ -182,6 +185,8 @@ public class OrderService {
     private void paymentCancelled(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
+
+        System.out.println("Received payment cancelled with order " + orderId + " from user " + userId);
 
         Optional<Order> optOrder = findOrder(orderId);
 

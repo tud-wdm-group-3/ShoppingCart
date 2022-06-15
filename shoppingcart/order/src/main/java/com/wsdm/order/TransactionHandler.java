@@ -82,8 +82,7 @@ public class TransactionHandler {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
                     partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
-        System.out.println("got stock response");
-        System.out.println(stockResponse);
+        System.out.println("got stock response " + stockResponse);
 
         int orderId = (int) stockResponse.get("orderId");
         boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
@@ -119,7 +118,7 @@ public class TransactionHandler {
     }
 
     private void sendPaymentTransaction(Order order) {
-        System.out.println("sending payment check");
+        System.out.println("sending payment check for order" + order);
 
         // STEP 3: START PAYMENT TRANSACTION
         int userId = order.getUserId();
@@ -132,7 +131,7 @@ public class TransactionHandler {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
-        System.out.println("get payment response");
+        System.out.println("get payment response " + paymentResponse);
         int orderId = (int) paymentResponse.get("orderId");
         boolean enoughCredit = (boolean) paymentResponse.get("enoughCredit");
 
@@ -146,7 +145,7 @@ public class TransactionHandler {
     }
 
     private void sendStockTransaction(Order order) {
-        System.out.println("sending stock transaction");
+        System.out.println("sending stock transaction for order" + order);
 
         // STEP 5: START STOCK TRANSACTION
         Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), Environment.numStockInstances);
@@ -166,7 +165,7 @@ public class TransactionHandler {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
-        System.out.println("received stock transaction response");
+        System.out.println("received stock transaction response " + stockResponse);
 
         int orderId = (int) stockResponse.get("orderId");
         int stockId = (int) stockResponse.get("stockId");
@@ -205,6 +204,7 @@ public class TransactionHandler {
     }
 
     private void sendStockRollback(Order order, Map<Integer, Boolean> confirmations) {
+        System.out.println("Sending stock rollback for order " + order + " confirmations " + confirmations);
         Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), Environment.numStockInstances);
         for (int stockId : confirmations.keySet()) {
             if (confirmations.get(stockId)) {
@@ -216,6 +216,7 @@ public class TransactionHandler {
     }
 
     private void sendPaymentRollback(Order order) {
+        System.out.println("Sending payment rollback for order" + order);
         int userId = order.getUserId();
         int paymentPartition = Partitioner.getPartition(userId, Environment.numPaymentInstances);
         Map<String, Object> data = Map.of("userId", userId, "totalCost", order.getTotalCost());
@@ -223,11 +224,13 @@ public class TransactionHandler {
     }
 
     private void transactionFailed(int orderId) {
+        System.out.println("transaction for order " + orderId + " failed.");
         currentCheckoutOrders.remove(orderId);
         pendingResponses.remove(orderId).setResult(ResponseEntity.status(409).build());
     }
 
     private void transactionSucceeded(int orderId) {
+        System.out.println("transaction for order " + orderId + " succeeded.");
         Order order = currentCheckoutOrders.remove(orderId);
         sendOrderExists(order, 1);
         order.setPaid(true);

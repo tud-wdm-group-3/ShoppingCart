@@ -75,6 +75,7 @@ public class PaymentService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentWasOk(Map<String, Object> response) {
+        System.out.println("Received payment was ok " + response);
         int orderId = (int) response.get("orderId");
         boolean result = (boolean) response.get("result");
 
@@ -167,10 +168,10 @@ public class PaymentService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(ConsumerRecord<Integer, Map<String, Object>> request) {
-        int orderId = request.key();
-        int userId = (int) request.value().get("userId");
-        int cost = (int) request.value().get("totalCost");
-        System.out.println(request.value());
+        System.out.println("Received payment transaction " + request);
+        int orderId = (int) request.get("orderId");
+        int userId = (int) request.get("userId");
+        int cost = (int) request.get("totalCost");
         Optional<Payment> optPayment = findUser(userId);
         if (!optPayment.isPresent()) {
             throw new IllegalStateException("unknown user");
@@ -194,6 +195,7 @@ public class PaymentService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
+        System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
         int refund = (int) request.get("refund");
@@ -211,10 +213,11 @@ public class PaymentService {
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
     protected void orderExists(ConsumerRecord<Integer, Map<String, Integer>> request) {
-        int orderId = request.key();
-        int method = request.value().get("method");
-        int userId = request.value().get("userId");
-        int totalCost = request.value().get("totalCost");
+        System.out.println("Received order exists " + request);
+        int orderId = request.get("orderId");
+        int method = request.get("method");
+        int userId = request.get("userId");
+        int totalCost = request.get("totalCost");
 
         // method = 0 for add
         if (method == 0 ) {
