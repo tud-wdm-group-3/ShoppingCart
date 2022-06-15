@@ -5,3 +5,4 @@ server:
   port: 8082
   servlet:
     context-path: /payment
+partitions: 2

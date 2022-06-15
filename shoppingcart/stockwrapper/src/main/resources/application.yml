@@ -5,3 +5,4 @@ server:
   port: 8083
   servlet:
     context-path: /stock
+partitions: 2
