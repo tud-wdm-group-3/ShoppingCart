@@ -54,7 +54,7 @@ public record StockController(StockService stockService) {
             return ResponseEntity.badRequest().build();
 
         int itemId = stockService.createItem(price);
-        System.out.println("Adding item on " + Environment.myStockInstanceId + " created " + itemId);
+        System.out.println("Adding item on created " + itemId);
         return Map.of("item_id", itemId);
     }
 
