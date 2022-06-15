@@ -13,6 +13,7 @@ public record StockController(StockService stockService) {
 
     @GetMapping(path="/find/{item_id}")
     public Object findItem(@PathVariable(name="item_id") int item_id){
+        System.out.println("Finding item " + item_id);
         Optional<Stock> stock = stockService.findItem(item_id);
         if (stock.isPresent()){
             return Map.of("amount", stock.get().getAmount(), "price", stock.get().getPrice());
@@ -24,6 +25,7 @@ public record StockController(StockService stockService) {
     @PostMapping(path="/subtract/{item_id}/{amount}")
     public ResponseEntity subtractStock(@PathVariable(name="item_id") int item_id,
                          @PathVariable(name="amount") int amount) {
+        System.out.println("subtracting stock to " + item_id + " with amount " + amount);
         if (amount <= 0)
             return ResponseEntity.badRequest().build();
 
@@ -36,6 +38,7 @@ public record StockController(StockService stockService) {
     @PostMapping(path="/add/{item_id}/{amount}")
     public ResponseEntity addStock(@PathVariable(name="item_id") int item_id,
                                            @PathVariable(name="amount") int amount) {
+        System.out.println("adding stock to " + item_id + " with amount " + amount);
         if (amount <= 0)
             return ResponseEntity.badRequest().build();
 
