@@ -6,6 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 @Data
 @Builder
@@ -20,4 +24,15 @@ public class Payment {
 
     private Integer userId;
     private Integer credit;
+
+
+    /**
+     * Basically our idempotence keys, with information on how much is paid.
+     */
+    @ElementCollection
+    @MapKeyColumn(name="name")
+    @Column(name="value")
+    @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
+    private Map<Integer, Integer> orderIdToPaidAmount = new HashMap<>();
+
 }
