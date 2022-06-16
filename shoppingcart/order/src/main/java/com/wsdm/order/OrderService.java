@@ -190,6 +190,8 @@ public class OrderService {
 
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
         if (mayChangeOrder(order) && order.getTotalCost() == amount) {
+            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true, "paidKey", paidKey);
+            kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
             order.setPaid(true);
             order.setPaidKey(paidKey);
             repository.save(order);
