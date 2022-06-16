@@ -184,16 +184,11 @@ public class OrderService {
 
         Order order = optOrder.get();
 
-        if (paidKey == order.getPaidKey()) {
-            return;
-        }
-
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
         if (mayChangeOrder(order) && order.getTotalCost() == amount) {
             Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
             kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
             order.setPaid(true);
-            order.setPaidKey(paidKey);
             repository.save(order);
         } else {
             Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount);
@@ -217,12 +212,7 @@ public class OrderService {
         }
         Order order = optOrder.get();
 
-        if (order.getCancelledKey() == cancelledKey) {
-            return;
-        }
-
         order.setPaid(false);
-        order.setCancelledKey(cancelledKey);
         repository.save(order);
     }
 

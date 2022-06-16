@@ -70,7 +70,7 @@ public class PaymentService {
             pendingPaymentResponses.put(orderId, response);
 
             int partition = Partitioner.getPartition(orderId, numOrderInstances);
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount, "paidKey", getKey());
+            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
             fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
 
             pay(payment, orderId, amount);
@@ -111,7 +111,7 @@ public class PaymentService {
         }
 
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
-        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "cancelledKey", getKey());
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId);
         fromPaymentTemplate.send("fromPaymentCancelled", partition, orderId, data);
 
         cancel(payment, orderId, -1);
@@ -264,8 +264,4 @@ public class PaymentService {
         return optPayment.get();
     }
 
-    private static Random rand = new Random();
-    private int getKey() {
-        return rand.nextInt(10000000);
-    }
 }

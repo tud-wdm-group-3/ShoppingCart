@@ -29,11 +29,6 @@ public class Order {
     private boolean paid;
     private boolean inCheckout;
 
-    /**
-     * Fault tolerance.
-     */
-    private int paidKey;
-    private int cancelledKey;
 
     public Order(int userId)
     {
@@ -42,7 +37,5 @@ public class Order {
         totalCost = 0;
         paid = false;
         inCheckout = false;
-        paidKey = -1;
-        cancelledKey = -1;
     }
 }
