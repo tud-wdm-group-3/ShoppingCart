@@ -12,6 +12,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.async.DeferredResult;
 
 
@@ -60,7 +62,7 @@ public class OrderService {
         Optional<Order> optOrder = findOrder(orderId);
         if (optOrder.isPresent()) {
             Order order = optOrder.get();
-            if (!order.isInCheckout()) {
+            if (mayChangeOrder(order)) {
                 transactionHandler.sendOrderExists(order, 1);
                 repository.delete(order);
                 return true;
@@ -69,7 +71,7 @@ public class OrderService {
         return false;
     }
 
-    public Optional<Order> findOrder(int orderId){
+    public Optional<Order> findOrder(int orderId) {
         // Convert to local id
         int localId = (orderId - myOrderInstanceId) / numOrderInstances;
         return repository.findById(localId);
@@ -164,7 +166,6 @@ public class OrderService {
     /**
      * Payment made.
      *
-     * TODO: check if idempotence key has been processed.
      */
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
@@ -172,6 +173,7 @@ public class OrderService {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
         int amount = request.get("amount");
+        int paidKey = request.get("paidKey");
         System.out.println("Received payment made with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
@@ -180,15 +182,19 @@ public class OrderService {
             throw new AssertionError("Payment made for unexisting order");
         }
 
-        int partition = Partitioner.getPartition(userId, numPaymentInstances);
         Order order = optOrder.get();
+
+        if (paidKey == order.getPaidKey()) {
+            return;
+        }
+
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
         if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
-            kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
             order.setPaid(true);
+            order.setPaidKey(paidKey);
             repository.save(order);
         } else {
-            Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount);
+            Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount, "paidKey", paidKey);
             kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
         }
     }
@@ -198,6 +204,7 @@ public class OrderService {
     private void paymentCancelled(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
+        int cancelledKey = request.get("cancelledKey");
 
         System.out.println("Received payment cancelled with order " + orderId + " from user " + userId);
 
@@ -207,7 +214,13 @@ public class OrderService {
             throw new AssertionError("Payment made for unexisting order");
         }
         Order order = optOrder.get();
+
+        if (order.getCancelledKey() == cancelledKey) {
+            return;
+        }
+
         order.setPaid(false);
+        order.setCancelledKey(cancelledKey);
         repository.save(order);
     }
 
