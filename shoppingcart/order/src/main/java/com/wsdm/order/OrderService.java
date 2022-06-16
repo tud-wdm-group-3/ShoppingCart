@@ -141,7 +141,7 @@ public class OrderService {
      * Used to initialize cache of itemIds, so false relativeToCurrent.
      */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         int price = item.get("price");
@@ -162,7 +162,7 @@ public class OrderService {
      * Payment made.
      */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentMade(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
@@ -191,7 +191,7 @@ public class OrderService {
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentCancelled",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentCancelled(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");

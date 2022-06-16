@@ -96,7 +96,7 @@ public class StockService {
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
         System.out.println("Received stock check " + request);
         int orderId = request.key();
@@ -125,7 +125,7 @@ public class StockService {
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
         System.out.println("Received stock transaction " + request);
         int orderId = request.key();
@@ -161,7 +161,7 @@ public class StockService {
     }
 
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockRollback",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockRollback(ConsumerRecord<Integer, List<Integer>> request) {
         System.out.println("Received stock rollback " + request);
 
