@@ -174,17 +174,18 @@ public class OrderService {
     }
 
     /**
-     * Payment made.
-     *
+     * Payment made or cancelled.
+     * By putting them in the same topic, we have a total ordering between pay and cancel,
+     * so we always process in the correct order.
      */
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    private void paymentMade(Map<String, Integer> request) {
-        int orderId = request.get("orderId");
-        int userId = request.get("userId");
-        int amount = request.get("amount");
-        int paidKey = request.get("paidKey");
-        System.out.println("Received payment made with order " + orderId + " from user " + userId + " and amount " + amount);
+    private void paymentChanged(Map<String, Object> request) {
+        int orderId = (int) request.get("orderId");
+        int userId = (int) request.get("userId");
+        int amount = (int) request.get("amount");
+        String type = (String) request.get("type");
+        System.out.println("Received payment made/cancelled with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
 
@@ -195,35 +196,20 @@ public class OrderService {
         Order order = optOrder.get();
 
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
-        if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
-            kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
-            order.setPaid(true);
+        if (type == "pay") {
+            if (mayChangeOrder(order) && order.getTotalCost() == amount) {
+                Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
+                kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
+                order.setPaid(true);
+                repository.save(order);
+            } else {
+                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount);
+                kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
+            }
+        } else if (type == "cancel") {
+            order.setPaid(false);
             repository.save(order);
-        } else {
-            Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount);
-            kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
         }
-    }
-
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentCancelled",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    private void paymentCancelled(Map<String, Integer> request) {
-        int orderId = request.get("orderId");
-        int userId = request.get("userId");
-        int cancelledKey = request.get("cancelledKey");
-
-        System.out.println("Received payment cancelled with order " + orderId + " from user " + userId);
-
-        Optional<Order> optOrder = findOrder(orderId);
-
-        if (!optOrder.isPresent()) {
-            throw new AssertionError("Payment made for unexisting order");
-        }
-        Order order = optOrder.get();
-
-        order.setPaid(false);
-        repository.save(order);
     }
 
     private boolean mayChangeOrder(Order order) {

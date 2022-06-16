@@ -70,8 +70,12 @@ public class PaymentService {
             pendingPaymentResponses.put(orderId, response);
 
             int partition = Partitioner.getPartition(orderId, numOrderInstances);
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
+            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount, "type", "pay");
             fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
+
+            // If we fail between sending the message above and paying below, then we are for sure not
+            // going to be able to send a response back. Hence we do not care that it is not paid,
+            // because the user receives a timeout anyway.
 
             pay(payment, orderId, amount);
         }
@@ -81,17 +85,21 @@ public class PaymentService {
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentWasOk(Map<String, Object> response) {
         System.out.println("Received payment response " + response);
+        int userId = (int) response.get("userId");
         int orderId = (int) response.get("orderId");
         boolean result = (boolean) response.get("result");
 
         if (pendingPaymentResponses.containsKey(orderId)) {
-            if (result) {
-                // payment was fine, so we can put to paid
-                pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
-            } else {
-                // rollback the amount paid
-                getPaymentRollback(response);
-                pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
+            Payment payment = getPaymentWithError(userId);
+            // Check if the payment went through
+            if (isPaid(payment, orderId)) {
+                if (result) {
+                    pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
+                } else {
+                    // rollback the amount paid
+                    getPaymentRollback(response);
+                    pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
+                }
             }
         }
     }
@@ -111,8 +119,12 @@ public class PaymentService {
         }
 
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
-        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId);
-        fromPaymentTemplate.send("fromPaymentCancelled", partition, orderId, data);
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", "cancel");
+        fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
+
+        // If we fail between sending the message above and cancelling below, then we are for sure not
+        // going to be able to send a response back. Hence we do not care that it is not cancelled,
+        // because the user receives a timeout anyway.
 
         cancel(payment, orderId, -1);
 
