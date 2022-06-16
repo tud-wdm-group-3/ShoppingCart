@@ -74,13 +74,8 @@ public class OrderController {
     @PostMapping(path = "/checkout/{orderId}")
     public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
         System.out.println("Checkout order " + orderId);
-        Optional<Order> order = service.findOrder(orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        if (!order.isPresent()) {
-            response.setResult(ResponseEntity.notFound().build());
-        } else {
-            service.checkout(order.get(), response);
-        }
+        service.checkout(orderId, response);
         return response;
     }
 }

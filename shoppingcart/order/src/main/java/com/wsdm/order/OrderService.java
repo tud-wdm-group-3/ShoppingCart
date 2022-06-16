@@ -123,10 +123,20 @@ public class OrderService {
         return false;
     }
 
-    public void checkout(Order order, DeferredResult<ResponseEntity> response){
-        order.setInCheckout(true);
-        repository.save(order);
-        transactionHandler.startCheckout(order, response);
+    public void checkout(int orderId, DeferredResult<ResponseEntity> response){
+        Optional<Order> optOrder = findOrder(orderId);
+        if (!optOrder.isPresent()) {
+            response.setResult(ResponseEntity.badRequest().build());
+            return;
+        }
+        Order order = optOrder.get();
+
+        if (mayCheckout(order)) {
+            transactionHandler.startCheckout(order, response);
+        } else {
+            response.setResult(ResponseEntity.badRequest().build());
+            return;
+        }
     }
 
 
@@ -220,4 +230,5 @@ public class OrderService {
         return !order.isInCheckout() && !order.isPaid();
     }
 
+    private boolean mayCheckout(Order order) { return !order.isInCheckout();}
 }

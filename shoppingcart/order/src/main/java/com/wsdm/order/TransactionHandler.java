@@ -57,13 +57,11 @@ public class TransactionHandler {
 
     public TransactionHandler(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
-
-        this.stockCheckLog = new HashMap<>();
-        this.transactionLog = new HashMap<>();
     }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
         pendingResponses.put(order.getOrderId(), response);
+        currentCheckoutOrders.put(order.getOrderId(), order);
         sendStockCheck(order);
     }
 
@@ -78,13 +76,11 @@ public class TransactionHandler {
         // STEP 1: SEND STOCK CHECK
         Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), numStockInstances);
 
-        currentCheckoutOrders.put(order.getOrderId(), order);
         Map<String, Object> log = new HashMap<>();
         log.put("total", stockPartition.size());
         log.put("count", 0);
         log.put("flag", true);
         stockCheckLog.put(order.getOrderId(), log);
-
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
@@ -100,11 +96,11 @@ public class TransactionHandler {
         int orderId = (int) stockResponse.get("orderId");
         boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
 
-        // Get current order stock check log
-        Map<String, Object> curOrderLog = new HashMap<>(stockCheckLog.get(orderId));
-
         // Get current order
         Order curOrder = currentCheckoutOrders.get(orderId);
+
+        // Get current order stock check log
+        Map<String, Object> curOrderLog = stockCheckLog.get(orderId);
 
         boolean prevEnoughInStock = (boolean) curOrderLog.get("flag");
 
@@ -251,4 +247,7 @@ public class TransactionHandler {
         orderRepository.save(order);
         pendingResponses.remove(orderId).setResult(ResponseEntity.ok().build());
     }
+
+
+
 }
