@@ -70,7 +70,7 @@ public class PaymentService {
             pendingPaymentResponses.put(orderId, response);
 
             int partition = Partitioner.getPartition(orderId, numOrderInstances);
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount);
+            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount, "paidKey", getKey());
             fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
 
             pay(payment, orderId, amount);
@@ -80,7 +80,7 @@ public class PaymentService {
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentWasOk(Map<String, Object> response) {
-        System.out.println("Received payment was ok " + response);
+        System.out.println("Received payment response " + response);
         int orderId = (int) response.get("orderId");
         boolean result = (boolean) response.get("result");
 
@@ -111,7 +111,7 @@ public class PaymentService {
         }
 
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
-        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId);
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "cancelledKey", getKey());
         fromPaymentTemplate.send("fromPaymentCancelled", partition, orderId, data);
 
         cancel(payment, orderId, -1);
@@ -262,5 +262,10 @@ public class PaymentService {
             throw new IllegalStateException("User with userId " + userId + " does not exist.");
         }
         return optPayment.get();
+    }
+
+    private static Random rand = new Random();
+    private int getKey() {
+        return rand.nextInt(10000000);
     }
 }
