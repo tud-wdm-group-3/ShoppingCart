@@ -27,8 +27,9 @@ public class Order {
     private int userId;
     private int totalCost;
     private boolean paid;
-    private boolean inCheckout;
 
+    private boolean inCheckout;
+    private String replicaHandlingCheckout;
 
     public Order(int userId)
     {
@@ -37,5 +38,6 @@ public class Order {
         totalCost = 0;
         paid = false;
         inCheckout = false;
+        replicaHandlingCheckout = "";
     }
 }

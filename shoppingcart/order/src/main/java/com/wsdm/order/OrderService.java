@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.async.DeferredResult;
 
 
+import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.Future;
 
@@ -26,6 +27,8 @@ import java.util.concurrent.Future;
 public class OrderService {
     @Value("${PARTITION_ID}")
     private int myOrderInstanceId;
+
+    private String myReplicaId;
 
     private int numStockInstances = 2;
 
@@ -41,7 +44,11 @@ public class OrderService {
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
-        transactionHandler = new TransactionHandler(repository);
+        try {
+            myReplicaId = InetAddress.getLocalHost().getHostName();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
     }
 
     public int createOrder(int userId){

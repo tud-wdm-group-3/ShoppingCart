@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.net.InetAddress;
 import java.util.*;
 
 @Service
@@ -29,6 +30,8 @@ public class TransactionHandler {
 
     private int numOrderInstances = 2;
 
+    private String myReplicaId;
+
     /**
      * Maps orderId to deferredResult.
      */
@@ -42,13 +45,13 @@ public class TransactionHandler {
     /**
      * Map orderId to properties map, including total, count, flag etc.
      */
-    private Map<Integer, Map> stockCheckLog;
+    private Map<Integer, Map> stockCheckLog = new HashMap<>();
 
     /**
      * Map orderId to properties map, including total, count, and
      * a special map (confirmations) containing which partitions confirmed the transaction.
      */
-    private Map<Integer, Map> transactionLog;
+    private Map<Integer, Map> transactionLog = new HashMap<>();
 
     @Autowired
     private KafkaTemplate<Integer, Object> kafkaTemplate;
@@ -57,9 +60,29 @@ public class TransactionHandler {
 
     public TransactionHandler(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
+        try {
+            myReplicaId = InetAddress.getLocalHost().getHostName();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+
+        // Do the rollbacks for the failed orders.
+        List<Order> failedOrders = orderRepository.findOrdersByInCheckoutAndReplicaHandlingCheckout(true, myReplicaId);
+        for (Order order: failedOrders) {
+            sendPaymentRollback(order);
+            Map<Integer, List<Integer>> stockPartitions = Partitioner.getPartition(order.getItems(), numStockInstances);
+            Map<Integer, Boolean> fakeConfirmations = new HashMap<>();
+            for (int stockPartition : stockPartitions.keySet()) {
+                fakeConfirmations.put(stockPartition, true);
+            }
+            sendStockRollback(order, fakeConfirmations);
+        }
     }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
+        order.setInCheckout(true);
+        order.setReplicaHandlingCheckout(myReplicaId);
+        orderRepository.save(order);
         pendingResponses.put(order.getOrderId(), response);
         currentCheckoutOrders.put(order.getOrderId(), order);
         sendStockCheck(order);
