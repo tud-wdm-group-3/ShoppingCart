@@ -10,6 +10,8 @@ import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.async.DeferredResult;
 
 
@@ -18,6 +20,7 @@ import java.util.concurrent.Future;
 
 
 @Service
+@Transactional(isolation = Isolation.SERIALIZABLE)
 public class OrderService {
     @Value("${PARTITION_ID}")
     private int myOrderInstanceId;
