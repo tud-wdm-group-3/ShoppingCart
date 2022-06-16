@@ -91,37 +91,40 @@ public class TransactionHandler {
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockCheck",
                     partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
-        System.out.println("got stock response " + stockResponse);
-
         int orderId = (int) stockResponse.get("orderId");
-        boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
+        if (currentCheckoutOrders.containsKey(orderId)) {
+            System.out.println("got stock response " + stockResponse);
 
-        // Get current order
-        Order curOrder = currentCheckoutOrders.get(orderId);
 
-        // Get current order stock check log
-        Map<String, Object> curOrderLog = stockCheckLog.get(orderId);
+            boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
 
-        boolean prevEnoughInStock = (boolean) curOrderLog.get("flag");
+            // Get current order
+            Order curOrder = currentCheckoutOrders.get(orderId);
 
-        if (prevEnoughInStock && !enoughInStock) {
-            // First fail, so imm. send transactionFailed
-            transactionFailed(orderId);
-        }
+            // Get current order stock check log
+            Map<String, Object> curOrderLog = stockCheckLog.get(orderId);
 
-        // Update info
-        curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
-        curOrderLog.put("flag", prevEnoughInStock && enoughInStock);
-        stockCheckLog.put(orderId, curOrderLog);
+            boolean prevEnoughInStock = (boolean) curOrderLog.get("flag");
 
-        if (curOrderLog.get("count") == curOrderLog.get("total")){
-            // Remove it from the log since check is completed
-            stockCheckLog.remove(orderId);
-            boolean enoughInAllStock = prevEnoughInStock && enoughInStock;
-            if (enoughInAllStock && !curOrder.isPaid()) {
-                sendPaymentTransaction(currentCheckoutOrders.get(orderId));
-            } else if (enoughInAllStock){
-                sendStockTransaction(curOrder);
+            if (prevEnoughInStock && !enoughInStock) {
+                // First fail, so imm. send transactionFailed
+                transactionFailed(orderId);
+            }
+
+            // Update info
+            curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
+            curOrderLog.put("flag", prevEnoughInStock && enoughInStock);
+            stockCheckLog.put(orderId, curOrderLog);
+
+            if (curOrderLog.get("count") == curOrderLog.get("total")){
+                // Remove it from the log since check is completed
+                stockCheckLog.remove(orderId);
+                boolean enoughInAllStock = prevEnoughInStock && enoughInStock;
+                if (enoughInAllStock && !curOrder.isPaid()) {
+                    sendPaymentTransaction(currentCheckoutOrders.get(orderId));
+                } else if (enoughInAllStock){
+                    sendStockTransaction(curOrder);
+                }
             }
         }
     }
@@ -141,16 +144,19 @@ public class TransactionHandler {
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
-        System.out.println("get payment response " + paymentResponse);
         int orderId = (int) paymentResponse.get("orderId");
-        boolean enoughCredit = (boolean) paymentResponse.get("enoughCredit");
+        if (currentCheckoutOrders.containsKey(orderId)) {
+            System.out.println("get payment response " + paymentResponse);
 
-        // STEP 4: RECEIVE RESPONSE FROM PAYMENT TRANSACTION
-        if (enoughCredit) {
-            currentCheckoutOrders.get(orderId).setPaid(true);
-            sendStockTransaction(currentCheckoutOrders.get(orderId));
-        } else {
-            transactionFailed(orderId);
+            boolean enoughCredit = (boolean) paymentResponse.get("enoughCredit");
+
+            // STEP 4: RECEIVE RESPONSE FROM PAYMENT TRANSACTION
+            if (enoughCredit) {
+                currentCheckoutOrders.get(orderId).setPaid(true);
+                sendStockTransaction(currentCheckoutOrders.get(orderId));
+            } else {
+                transactionFailed(orderId);
+            }
         }
     }
 
@@ -175,33 +181,36 @@ public class TransactionHandler {
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
-        System.out.println("received stock transaction response " + stockResponse);
-
         int orderId = (int) stockResponse.get("orderId");
-        int stockId = (int) stockResponse.get("stockId");
-        boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
+        if (currentCheckoutOrders.containsKey(orderId)) {
+            System.out.println("received stock transaction response " + stockResponse);
 
-        // Get logs for this orderId
-        Map<String, Object> curOrderLog = transactionLog.get(orderId);
-        Map<Integer, Boolean> curOrderConfirmations = (HashMap<Integer, Boolean>) (curOrderLog.get("confirmations"));
 
-        // Process response
-        curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
-        curOrderConfirmations.put(stockId, enoughInStock);
-        transactionLog.put(orderId, curOrderLog);
+            int stockId = (int) stockResponse.get("stockId");
+            boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
 
-        if (curOrderLog.get("count") == curOrderLog.get("total")){
+            // Get logs for this orderId
+            Map<String, Object> curOrderLog = transactionLog.get(orderId);
+            Map<Integer, Boolean> curOrderConfirmations = (HashMap<Integer, Boolean>) (curOrderLog.get("confirmations"));
 
-            if (curOrderConfirmations.values().contains(false)) {
-                Order order = currentCheckoutOrders.get(orderId);
-                sendStockRollback(order, curOrderConfirmations);
-                sendPaymentRollback(order);
-                transactionFailed(orderId);
-            } else {
-                transactionSucceeded(orderId);
+            // Process response
+            curOrderLog.put("count", (int) curOrderLog.get("count") + 1);
+            curOrderConfirmations.put(stockId, enoughInStock);
+            transactionLog.put(orderId, curOrderLog);
+
+            if (curOrderLog.get("count") == curOrderLog.get("total")){
+
+                if (curOrderConfirmations.values().contains(false)) {
+                    Order order = currentCheckoutOrders.get(orderId);
+                    sendStockRollback(order, curOrderConfirmations);
+                    sendPaymentRollback(order);
+                    transactionFailed(orderId);
+                } else {
+                    transactionSucceeded(orderId);
+                }
+                // Remove order from transaction Log
+                transactionLog.remove(orderId);
             }
-            // Remove order from transaction Log
-            transactionLog.remove(orderId);
         }
     }
 
