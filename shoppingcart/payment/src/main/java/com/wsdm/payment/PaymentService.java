@@ -82,7 +82,7 @@ public class PaymentService {
         }
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentWasOk(Map<String, Object> response) {
         System.out.println("Received payment was ok " + response);
@@ -175,7 +175,7 @@ public class PaymentService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
@@ -202,7 +202,7 @@ public class PaymentService {
     }
 
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentRollback",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
@@ -220,7 +220,7 @@ public class PaymentService {
      * Used to initialize cache of orderIds, so false relativeToCurrent.
      * @param request
      */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
     protected void orderExists(Map<String, Integer> request) {
         System.out.println("Received order exists " + request);

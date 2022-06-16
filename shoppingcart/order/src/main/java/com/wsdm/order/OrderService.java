@@ -140,7 +140,7 @@ public class OrderService {
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent.
      */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
@@ -160,14 +160,15 @@ public class OrderService {
 
     /**
      * Payment made.
+     *
+     * TODO: check if idempotence key has been processed.
      */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentMade(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
         int amount = request.get("amount");
-
         System.out.println("Received payment made with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
@@ -181,7 +182,6 @@ public class OrderService {
         if (mayChangeOrder(order) && order.getTotalCost() == amount) {
             Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
             kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
-
             order.setPaid(true);
             repository.save(order);
         } else {
@@ -190,7 +190,7 @@ public class OrderService {
         }
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentCancelled",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentCancelled",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentCancelled(Map<String, Integer> request) {
         int orderId = request.get("orderId");

@@ -89,7 +89,7 @@ public class TransactionHandler {
     }
 
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockCheck",
                     partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
         System.out.println("got stock response " + stockResponse);
@@ -139,7 +139,7 @@ public class TransactionHandler {
         kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
         System.out.println("get payment response " + paymentResponse);
@@ -173,7 +173,7 @@ public class TransactionHandler {
         }
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
         System.out.println("received stock transaction response " + stockResponse);
