@@ -76,7 +76,10 @@ public class TransactionHandler {
                 fakeConfirmations.put(stockPartition, true);
             }
             sendStockRollback(order, fakeConfirmations);
+            order.setInCheckout(false);
+            order.setReplicaHandlingCheckout("");
         }
+        orderRepository.saveAll(failedOrders);
     }
 
     public void startCheckout(Order order, DeferredResult<ResponseEntity> response) {
