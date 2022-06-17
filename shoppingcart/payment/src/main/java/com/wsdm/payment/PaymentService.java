@@ -101,7 +101,7 @@ public class PaymentService {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void paymentResponse(Map<String, Object> response) {
         String replicaId = (String) response.get("replicaId");
         int orderId = (int) response.get("orderId");
@@ -206,7 +206,7 @@ public class PaymentService {
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
@@ -223,7 +223,7 @@ public class PaymentService {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");

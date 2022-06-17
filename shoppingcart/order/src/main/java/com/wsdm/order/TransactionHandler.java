@@ -116,7 +116,7 @@ public class TransactionHandler {
 
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockCheck",
-                    partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+                    partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
         if (currentCheckoutOrders.containsKey(orderId)) {
@@ -169,7 +169,7 @@ public class TransactionHandler {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
         int orderId = (int) paymentResponse.get("orderId");
         if (currentCheckoutOrders.containsKey(orderId)) {
@@ -208,7 +208,7 @@ public class TransactionHandler {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
         if (currentCheckoutOrders.containsKey(orderId)) {

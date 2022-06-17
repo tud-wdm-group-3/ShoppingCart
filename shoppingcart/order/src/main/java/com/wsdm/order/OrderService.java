@@ -220,7 +220,7 @@ public class OrderService {
      * so we always process in the correct order.
      */
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
