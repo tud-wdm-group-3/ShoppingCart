@@ -1,7 +1,9 @@
 ## How to run on minikube:
 
-1. Install minikube, kubectl, docker
-2. Install the ingress addon for minikube with `minikube addons enable ingress`
-3. Build the docker images with the `build-images.sh` script: `./build-images.sh`
-4. Deploy with the `deploy.sh` script: `./deploy.sh minikube start`
-5. When your are done, clean the cluster: `./deploy.sh minikube purge`
+1. Install minikube, kubectl, docker, helm
+2. Start minikube, preferably with `minikube start --memory 4096 --cpus 4`.
+3. Install the ingress addon for minikube with `minikube addons enable ingress`
+4. Build the docker images with the `build-images.sh` script: `./build-images.sh`
+5. Deploy with the `deploy.sh` script: `./deploy.sh minikube start`
+6. When your are done, bring down the cluster and clean all volumes: `./deploy.sh minikube purge`
+7. Shut down minikube: `minikube stop`
