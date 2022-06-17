@@ -107,7 +107,7 @@ public class PaymentService {
         // pending response.
         if (replicaId == myReplicaId && !payment.getProcessedPaymentKeys().contains(paymentKey)) {
             System.out.println("Received payment response " + response);
-            if (type == "payment") {
+            if (type == "pay") {
                 // Check if the payment went through
                 if (isPaid(payment, orderId)) {
                     if (result) {

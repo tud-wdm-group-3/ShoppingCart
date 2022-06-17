@@ -210,27 +210,31 @@ public class OrderService {
             return;
         }
 
-        int partition = Partitioner.getPartition(userId, numPaymentInstances);
         if (type == "pay") {
             if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-                Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true, "type", "payment", "replicaId", replicaId, "paymentKey", paymentKey);
-                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                respondToPaymentChange(orderId, userId, true, "pay", replicaId, paymentKey, -1);
                 setPaid(order, true, paymentKey);
             } else {
-                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount, "type", "payment", "replicaId", replicaId, "paymentKey", paymentKey);
-                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                respondToPaymentChange(orderId, userId, false, "pay", replicaId, paymentKey, amount);
             }
         } else if (type == "cancel") {
             if (mayCancelOrder(order)) {
-                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", true, "type", "cancel", "replicaId", replicaId, "paymentKey", paymentKey);
-                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                respondToPaymentChange(orderId, userId, true, "cancel", replicaId, paymentKey, -1);
                 setPaid(order, false, paymentKey);
             } else {
-                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false, "type", "cancel", "replicaId", replicaId, "paymentKey", paymentKey);
-                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                respondToPaymentChange(orderId, userId, false, "cancel", replicaId, paymentKey, -1);
             }
 
         }
+    }
+
+    private void respondToPaymentChange(int orderId, int userId, boolean result, String type, String replicaId, int paymentKey, int refund) {
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
+        Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey);
+        if (refund != -1 && !result && type == "pay") {
+            data.put("refund", refund);
+        }
+        kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
     }
 
     private void setPaid(Order order, boolean paid, int paymentKey) {
