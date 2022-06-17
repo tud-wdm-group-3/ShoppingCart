@@ -192,6 +192,9 @@ public class OrderService {
         int userId = (int) request.get("userId");
         int amount = (int) request.get("amount");
         String type = (String) request.get("type");
+        String replicaId = (String) request.get("replicaId");
+        int paymentKey = (int) request.get("paymentKey");
+
         System.out.println("Received payment made/cancelled with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
@@ -202,25 +205,48 @@ public class OrderService {
 
         Order order = optOrder.get();
 
+        // Check if other replicas have processed this already
+        if (order.getProcessedPaymentKeys().contains(paymentKey)) {
+            return;
+        }
+
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
         if (type == "pay") {
             if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-                Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true);
-                kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
-                order.setPaid(true);
-                repository.save(order);
+                Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "result", true, "type", "payment", "replicaId", replicaId, "paymentKey", paymentKey);
+                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                setPaid(order, true, paymentKey);
             } else {
-                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount);
-                kafkaTemplate.send("toPaymentWasOk", partition, orderId, data);
+                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false,"refund", amount, "type", "payment", "replicaId", replicaId, "paymentKey", paymentKey);
+                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
             }
         } else if (type == "cancel") {
-            order.setPaid(false);
-            repository.save(order);
+            if (mayCancelOrder(order)) {
+                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", true, "type", "cancel", "replicaId", replicaId, "paymentKey", paymentKey);
+                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+                setPaid(order, false, paymentKey);
+            } else {
+                Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", false, "type", "cancel", "replicaId", replicaId, "paymentKey", paymentKey);
+                kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+            }
+
         }
+    }
+
+    private void setPaid(Order order, boolean paid, int paymentKey) {
+        order.setPaid(paid);
+        Set<Integer> processedPaymentKeys = order.getProcessedPaymentKeys();
+        processedPaymentKeys.add(paymentKey);
+        order.setProcessedPaymentKeys(processedPaymentKeys);
+        repository.save(order);
     }
 
     private boolean mayChangeOrder(Order order) {
         return !order.isInCheckout() && !order.isPaid();
+    }
+
+    private boolean mayCancelOrder(Order order) {
+        return order.isPaid() && !order.isInCheckout();
     }
 
     private boolean mayCheckout(Order order) { return !order.isInCheckout();}

@@ -7,7 +7,9 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "Orders")
@@ -28,6 +30,9 @@ public class Order {
     private int totalCost;
     private boolean paid;
 
+    @ElementCollection
+    private Set<Integer> processedPaymentKeys;
+
     private boolean inCheckout;
     private String replicaHandlingCheckout;
 
@@ -38,6 +43,7 @@ public class Order {
         totalCost = 0;
         paid = false;
         inCheckout = false;
+        processedPaymentKeys = new HashSet<>();
         replicaHandlingCheckout = "";
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.net.InetAddress;
 import java.util.*;
 
 @Service
@@ -22,6 +23,8 @@ public class PaymentService {
 
     @Value("${PARTITION_ID}")
     private int myPaymentInstanceId;
+
+    private String myReplicaId;
 
     private int numStockInstances = 2;
 
@@ -38,15 +41,22 @@ public class PaymentService {
 
     /**
      * Maps orderId to deferredResult.
+     *
      */
     private Map<Integer, DeferredResult<ResponseEntity>> pendingPaymentResponses = new HashMap<>();
 
     @Autowired
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
+
+        try {
+            myReplicaId = InetAddress.getLocalHost().getHostName();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
     }
 
-    public void makePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response) {
+    public void changePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
         if (!orderExists(userId, orderId)) {
             response.setResult(ResponseEntity.notFound().build());
             return;
@@ -58,77 +68,89 @@ public class PaymentService {
         }
         Payment payment = optPaymentUser.get();
 
-        if (isPaid(payment, orderId)) {
+        if ((!cancellation && isPaid(payment, orderId)) || (cancellation && !isPaid(payment, orderId))) {
             response.setResult(ResponseEntity.notFound().build());
             return;
         }
 
-        if (payment.getCredit() < amount) {
-            response.setResult(ResponseEntity.badRequest().build());
-            return;
+        int paymentKey = getKey();
+        if (!cancellation) {
+            if (payment.getCredit() < amount) {
+                response.setResult(ResponseEntity.badRequest().build());
+                return;
+            } else {
+                pendingPaymentResponses.put(orderId, response);
+                sendChangePaymentToOrder(orderId, userId, "pay", amount);
+
+                // We must pay now because we are sure credit is enough now
+                pay(payment, orderId, amount);
+            }
         } else {
             pendingPaymentResponses.put(orderId, response);
-
-            int partition = Partitioner.getPartition(orderId, numOrderInstances);
-            Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "amount", amount, "type", "pay");
-            fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
-
-            // If we fail between sending the message above and paying below, then we are for sure not
-            // going to be able to send a response back. Hence we do not care that it is not paid,
-            // because the user receives a timeout anyway.
-
-            pay(payment, orderId, amount);
+            sendChangePaymentToOrder(orderId, userId, "cancel", -1);
+            // We do not cancel now, because rollbacking a cancellation is much more difficult
         }
     }
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentWasOk",
+    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    public void paymentWasOk(Map<String, Object> response) {
-        System.out.println("Received payment response " + response);
-        int userId = (int) response.get("userId");
+    public void paymentResponse(Map<String, Object> response) {
+        String replicaId = (String) response.get("replicaId");
         int orderId = (int) response.get("orderId");
+        int userId = (int) response.get("userId");
         boolean result = (boolean) response.get("result");
+        String type = (String) response.get("type");
+        int paymentKey = (int) response.get("paymentKey");
+        Payment payment = getPaymentWithError(userId);
 
-        if (pendingPaymentResponses.containsKey(orderId)) {
-            Payment payment = getPaymentWithError(userId);
-            // Check if the payment went through
-            if (isPaid(payment, orderId)) {
-                if (result) {
-                    pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
-                } else {
-                    // rollback the amount paid
-                    getPaymentRollback(response);
-                    pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
+        // It must be processed by this replica, because only the replica can know whether he still has the
+        // pending response.
+        if (replicaId == myReplicaId && !payment.getProcessedPaymentKeys().contains(paymentKey)) {
+            System.out.println("Received payment response " + response);
+            if (type == "payment") {
+                // Check if the payment went through
+                if (isPaid(payment, orderId)) {
+                    if (result) {
+                        respondToUser(orderId, true);
+                    } else {
+                        // rollback the amount paid
+                        getPaymentRollback(response);
+                        respondToUser(orderId, false);
+                    }
+                } else if (result) {
+                    // order thinks we paid, but we failed to save
+                    sendChangePaymentToOrder(orderId, userId, "cancel", -1);
                 }
+            } else if (type == "cancel") {
+                if (result) {
+                    cancel(payment, orderId, -1);
+                    respondToUser(orderId, true);
+                } else {
+                    respondToUser(orderId, false);
+                }
+            }
+            Set<Integer> processedPaymentKeys = payment.getProcessedPaymentKeys();
+            processedPaymentKeys.add(paymentKey);
+            payment.setProcessedPaymentKeys(processedPaymentKeys);
+            paymentRepository.save(payment);
+        }
+    }
+
+    private void respondToUser(int orderId, boolean ok) {
+        if (pendingPaymentResponses.containsKey(orderId)) {
+            if (ok) {
+                pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
+            } else {
+                pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
             }
         }
     }
 
-    public boolean cancelPayment(Integer userId, Integer orderId) {
-        if (!orderExists(userId, orderId)) {
-            return false;
-        }
-        Optional<Payment> optPaymentUser = findUser(userId);
-        if (optPaymentUser.isEmpty()) {
-            return false;
-        }
-        Payment payment = optPaymentUser.get();
-
-        if (!isPaid(payment, orderId)) {
-            return false;
-        }
-
+    private void sendChangePaymentToOrder(int orderId, int userId, String type, int amount) {
+        int paymentKey = getKey();
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
-        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", "cancel");
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", type, "amount", amount, "myReplicaId", myReplicaId, "paymentKey", paymentKey);
         fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
-
-        // If we fail between sending the message above and cancelling below, then we are for sure not
-        // going to be able to send a response back. Hence we do not care that it is not cancelled,
-        // because the user receives a timeout anyway.
-
-        cancel(payment, orderId, -1);
-
-        return true;
     }
 
     public Object getPaymentStatus(Integer userId, Integer orderId) {
@@ -274,6 +296,11 @@ public class PaymentService {
             throw new IllegalStateException("User with userId " + userId + " does not exist.");
         }
         return optPayment.get();
+    }
+
+    private static Random rand = new Random();
+    private static int getKey() {
+        return rand.nextInt(1000000);
     }
 
 }

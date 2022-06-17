@@ -27,19 +27,17 @@ public class PaymentController {
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
         System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        paymentService.makePayment(userId, orderId, amount, response);
+        paymentService.changePayment(userId, orderId, amount, response, false);
 
         return response;
     }
 
     @PostMapping(path="cancel/{user_id}/{order_id}")
-    public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
+    public DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         System.out.println("Received cancel from user " + userId + " for order " + orderId);
-        boolean completed = paymentService.cancelPayment(userId, orderId);
-        if (!completed) {
-            ResponseEntity.badRequest().build();
-        }
-        return ResponseEntity.ok().build();
+        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+        paymentService.changePayment(userId, orderId, -1, response, true);
+        return response;
     }
 
     @GetMapping(path="status/{user_id}/{order_id}")

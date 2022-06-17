@@ -25,9 +25,11 @@ public class Payment {
     private Integer userId;
     private Integer credit;
 
+    @ElementCollection
+    private Set<Integer> processedPaymentKeys = new HashSet<>();
 
     /**
-     * Basically our idempotence keys, with information on how much is paid.
+     * Information on how much is paid.
      */
     @ElementCollection
     @MapKeyColumn(name="name")
