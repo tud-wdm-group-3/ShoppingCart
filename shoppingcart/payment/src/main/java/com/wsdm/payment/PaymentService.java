@@ -222,7 +222,7 @@ public class PaymentService {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
         int refund = (int) request.get("refund");
-        Payment payment = paymentRepository.getById(userId);
+        Payment payment = getPaymentWithError(userId);
 
         cancel(payment, orderId, refund);
     }
