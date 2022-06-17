@@ -50,6 +50,22 @@ public class OrderService {
             System.out.println(ex.getMessage());
         }
         System.out.println("Order service started with replica-id " + myReplicaId);
+
+        List<Order> ordersNotBroadcasted = repository.findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted.YES);
+        List<Order> ordersToSave = new ArrayList<>();
+        for (Order orderNotBroadcasted : ordersNotBroadcasted) {
+            if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.NO) {
+                sendOrderExists(orderNotBroadcasted, "create");
+                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.YES);
+                ordersToSave.add(orderNotBroadcasted);
+            } else if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.PROCESSING_DELETION) {
+                // this means we failed before returning to client, so we rebroadcast and do not delete
+                sendOrderExists(orderNotBroadcasted, "create");
+                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.YES);
+                ordersToSave.add(orderNotBroadcasted);
+            }
+        }
+        repository.saveAll(ordersToSave);
     }
 
     public int createOrder(int userId){
@@ -59,9 +75,10 @@ public class OrderService {
 
         int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
         order.setOrderId(globalId);
+        order.setOrderBroadcasted(Order.OrderBroadcasted.YES);
         repository.save(order);
 
-        transactionHandler.sendOrderExists(order, 0);
+        sendOrderExists(order, "create");
 
         return globalId;
     }
@@ -71,8 +88,11 @@ public class OrderService {
         if (optOrder.isPresent()) {
             Order order = optOrder.get();
             if (mayChangeOrder(order)) {
-                transactionHandler.sendOrderExists(order, 1);
-                repository.delete(order);
+                order.setOrderBroadcasted(Order.OrderBroadcasted.PROCESSING_DELETION);
+                repository.save(order);
+                sendOrderExists(order, "delete");
+                order.setOrderBroadcasted(Order.OrderBroadcasted.DELETED);
+                repository.save(order);
                 return true;
             }
         }
@@ -82,7 +102,16 @@ public class OrderService {
     public Optional<Order> findOrder(int orderId) {
         // Convert to local id
         int localId = (orderId - myOrderInstanceId) / numOrderInstances;
-        return repository.findById(localId);
+        Optional<Order> optOrder = repository.findById(localId);
+
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            if (order.getOrderBroadcasted() == Order.OrderBroadcasted.DELETED) {
+                // do not return deleted orders
+                optOrder = Optional.empty();
+            }
+        }
+        return optOrder;
     }
 
     public boolean addItemToOrder(int orderId, int itemId){
@@ -244,6 +273,14 @@ public class OrderService {
         processedPaymentKeys.add(paymentKey);
         order.setProcessedPaymentKeys(processedPaymentKeys);
         repository.save(order);
+    }
+
+    public void sendOrderExists(Order order, String method) {
+        int userId = order.getUserId();
+        int partition = Partitioner.getPartition(userId, numPaymentInstances);
+
+        Map<String, Object> data = Map.of("userId", userId, "method", method);
+        kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), data);
     }
 
     private boolean mayChangeOrder(Order order) {

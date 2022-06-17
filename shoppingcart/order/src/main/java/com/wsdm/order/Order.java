@@ -30,18 +30,29 @@ public class Order {
     private int totalCost;
     private boolean paid;
 
+    enum OrderBroadcasted {
+        NO,
+        YES,
+        PROCESSING_DELETION,
+        DELETED
+    }
+    private OrderBroadcasted orderBroadcasted;
+
     @ElementCollection
     private Set<Integer> processedPaymentKeys;
 
     private boolean inCheckout;
+    private boolean checkedOut;
     private String replicaHandlingCheckout;
 
     public Order(int userId)
     {
         items = new ArrayList<>();
+        orderId = -1;
         userId = userId;
         totalCost = 0;
         paid = false;
+        orderBroadcasted = OrderBroadcasted.NO;
         inCheckout = false;
         processedPaymentKeys = new HashSet<>();
         replicaHandlingCheckout = "";

@@ -243,14 +243,6 @@ public class TransactionHandler {
         }
     }
 
-    public void sendOrderExists(Order order, int method) {
-        int userId = order.getUserId();
-        int partition = Partitioner.getPartition(userId, numPaymentInstances);
-
-        Map<String, Integer> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
-        kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), reqValue);
-    }
-
     private void sendStockRollback(Order order, Map<Integer, Boolean> confirmations) {
         System.out.println("Sending stock rollback for order " + order + " confirmations " + confirmations);
         Map<Integer, List<Integer>> stockPartition = Partitioner.getPartition(order.getItems(), numStockInstances);
@@ -280,8 +272,9 @@ public class TransactionHandler {
     private void transactionSucceeded(int orderId) {
         System.out.println("transaction for order " + orderId + " succeeded.");
         Order order = currentCheckoutOrders.remove(orderId);
-        sendOrderExists(order, 1);
         order.setPaid(true);
+        order.setReplicaHandlingCheckout("");
+        order.setCheckedOut(true);
         orderRepository.save(order);
         pendingResponses.remove(orderId).setResult(ResponseEntity.ok().build());
     }
