@@ -20,6 +20,7 @@ spec:
   selector:
     matchLabels:
       component: order-0
+  serviceName: "order-0"
   template:
     metadata:
       labels:
@@ -82,6 +83,7 @@ spec:
   selector:
     matchLabels:
       component: order-1
+  serviceName: "order-1"
   template:
     metadata:
       labels:
