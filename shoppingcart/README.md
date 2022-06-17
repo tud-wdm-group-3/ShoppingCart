@@ -5,5 +5,6 @@
 3. Install the ingress addon for minikube with `minikube addons enable ingress`
 4. Build the docker images with the `build-images.sh` script: `./build-images.sh`
 5. Deploy with the `deploy.sh` script: `./deploy.sh minikube start`
-6. When your are done, bring down the cluster and clean all volumes: `./deploy.sh minikube purge`
-7. Shut down minikube: `minikube stop`
+6. Use `minikube dashboard` for debugging
+7. When you 're done, bring down the cluster and clean all volumes: `./deploy.sh minikube purge`
+8. Shut down minikube: `minikube stop`
