@@ -100,13 +100,13 @@ public class StockService {
 
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockCheck",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
+    protected void getStockCheck(Map<String, Object> request) {
         System.out.println("Received stock check " + request);
-        int orderId = request.key();
+        int orderId = (int) request.get("orderId");
         int partition = orderId % numOrderInstances;
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
         List<Stock> stocks = findItems(ids);
 
@@ -129,54 +129,58 @@ public class StockService {
 
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
+    protected void getStockTransaction(Map<String, Object> request) {
         System.out.println("Received stock transaction " + request);
-        int orderId = request.key();
+        int orderId = (int) request.get("orderId");
         int orderPartition = orderId % numOrderInstances;
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findItems(ids);
 
-        // subtract amounts from stock
-        int curId = -1;
-        for (int id : ids) {
-            int required = itemIdToAmount.get(id);
-            // For rollbacks in case individual item no longer available
-            if (!subtractStock(id, required)) {
-                curId = id;
-                break;
-            }
+        boolean enoughInStock = true;
+        for (Stock stock : stocks) {
+            enoughInStock = enoughInStock && stock.getAmount() >= itemIdToAmount.get(stock.getItemId());
+            assert(!stock.getOrderToItemsProcessed().containsKey(orderId));
         }
 
-        // Internal rollback
-        if (curId != -1){
-            for (int id : ids){
-                if (id == curId) break;
-                int required = itemIdToAmount.get(id);
-                addStock(id, required);
+        if (enoughInStock) {
+            for (Stock stock : stocks) {
+                int amount = itemIdToAmount.get(stock.getItemId());
+                stock.setAmount(stock.getAmount() - amount);
+                Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
+                orderToItemsProcessed.put(orderId, amount);
             }
+            stockRepository.saveAll(stocks);
         }
 
-        boolean enoughInStock = curId == -1;
         Map<String, Object> data = Map.of("orderId", orderId, "stockId", myStockInstanceId, "enoughInStock", enoughInStock);
         fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, data);
     }
 
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockRollback(ConsumerRecord<Integer, List<Integer>> request) {
+    protected void getStockRollback(Map<String, Object> request) {
         System.out.println("Received stock rollback " + request);
+        int orderId = (int) request.get("orderId");
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findItems(ids);
 
         // Rollback amounts to stock
-        for (int id : ids) {
-            int returned = itemIdToAmount.get(id);
-            addStock(id, returned);
+        for (Stock stock : stocks) {
+            int amount = itemIdToAmount.get(stock.getItemId());
+            Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
+            if (orderToItemsProcessed.containsKey(orderId)) {
+                assert(amount == orderToItemsProcessed.get(orderId));
+                orderToItemsProcessed.remove(orderId);
+                stock.setAmount(stock.getAmount() + amount);
+            }
         }
+        stockRepository.saveAll(stocks);
     }
 
     private Map<Integer, Integer> countItems(List<Integer> items) {

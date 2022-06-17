@@ -109,7 +109,8 @@ public class TransactionHandler {
         stockCheckLog.put(order.getOrderId(), log);
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
+            Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
+            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
         }
     }
 
@@ -142,7 +143,7 @@ public class TransactionHandler {
             curOrderLog.put("flag", prevEnoughInStock && enoughInStock);
             stockCheckLog.put(orderId, curOrderLog);
 
-            if (curOrderLog.get("count") == curOrderLog.get("total")){
+            if (curOrderLog.get("count") == curOrderLog.get("total")) {
                 // Remove it from the log since check is completed
                 stockCheckLog.remove(orderId);
                 boolean enoughInAllStock = prevEnoughInStock && enoughInStock;
@@ -199,8 +200,10 @@ public class TransactionHandler {
         log.put("count", 0);
         log.put("confirmations", new HashMap<Integer, Boolean>());
         transactionLog.put(order.getOrderId(), log);
+
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-            kafkaTemplate.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), partitionEntry.getValue());
+            Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
+            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
         }
     }
 

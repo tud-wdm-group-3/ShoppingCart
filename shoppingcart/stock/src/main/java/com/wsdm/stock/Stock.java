@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.HashMap;
+import java.util.Map;
 
 @Table(name = "Stock")
 @Data
@@ -21,6 +23,15 @@ public class Stock {
     private Integer itemId;
     private Integer amount;
     private Integer price;
+
+    /**
+     * Information on how much stock.
+     */
+    @ElementCollection
+    @MapKeyColumn(name="name")
+    @Column(name="value")
+    @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
+    private Map<Integer, Integer> orderToItemsProcessed = new HashMap<>();
 
     public Stock(double price){
         amount=1;
