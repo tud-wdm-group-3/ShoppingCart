@@ -61,14 +61,6 @@ public class PaymentService {
             throw new RuntimeException(e);
         }
 
-        // Let kafka be able to get the hostname
-        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
-        try {
-            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-
         System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
