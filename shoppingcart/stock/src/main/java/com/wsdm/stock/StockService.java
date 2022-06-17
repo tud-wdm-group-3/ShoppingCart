@@ -36,26 +36,33 @@ public class StockService {
 
     public int createItem(int price) {
         Stock stock = new Stock(price);
-        stock.setPrice(price);
 
         // Convert local to global id
         stockRepository.save(stock);
         int globalId = stock.getLocalId() * numOrderInstances + myStockInstanceId;
-        stock.setItemId(globalId);
-        stockRepository.save(stock);
 
         // Update item logs in order instances
         Map<String, Integer> data = Map.of("itemId", globalId, "price", stock.getPrice());
-        for (int partition = 0; partition < numOrderInstances; partition++) {
-            fromStockTemplate.send("fromStockItemPrice", partition, data);
-        }
+        fromStockTemplate.send("fromStockItemPrice", 0, data);
+
+        stock.setItemId(globalId);
+        stock.setStockBroadcasted(Stock.StockBroadcasted.YES);
+        stockRepository.save(stock);
 
         return globalId;
     }
 
     public Optional<Stock> findItem(int itemId) {
         int localId = (itemId - myStockInstanceId) / numStockInstances;
-        return stockRepository.findById(localId);
+        Optional<Stock> optStock = stockRepository.findById(localId);
+        if (optStock.isPresent()) {
+            Stock order = optStock.get();
+            if (order.getStockBroadcasted() == Stock.StockBroadcasted.NO) {
+                // do not return unbroadcasted orders
+                optStock = Optional.empty();
+            }
+        }
+        return optStock;
     }
 
     public List<Stock> findItems(List<Integer> itemIds) {

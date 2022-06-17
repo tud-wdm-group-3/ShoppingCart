@@ -23,7 +23,7 @@ public class Payment {
     private Integer localId;
 
     private Integer userId;
-    private Integer credit;
+    private Integer credit = 0;
 
     @ElementCollection
     private Set<Integer> processedPaymentKeys = new HashSet<>();
@@ -36,5 +36,4 @@ public class Payment {
     @Column(name="value")
     @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
     private Map<Integer, Integer> orderIdToPaidAmount = new HashMap<>();
-
 }

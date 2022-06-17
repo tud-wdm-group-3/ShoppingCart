@@ -55,11 +55,11 @@ public class OrderService {
         List<Order> ordersToSave = new ArrayList<>();
         for (Order orderNotBroadcasted : ordersNotBroadcasted) {
             if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.NO) {
-                sendOrderExists(orderNotBroadcasted, "create");
-                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.YES);
+                // this means we failed at creation before returning to client, so we delete this order
+                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.DELETED);
                 ordersToSave.add(orderNotBroadcasted);
             } else if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.PROCESSING_DELETION) {
-                // this means we failed before returning to client, so we rebroadcast and do not delete
+                // this means we failed at deletion before returning to client, so we rebroadcast and do not delete
                 sendOrderExists(orderNotBroadcasted, "create");
                 orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.YES);
                 ordersToSave.add(orderNotBroadcasted);
@@ -69,16 +69,14 @@ public class OrderService {
     }
 
     public int createOrder(int userId){
-        Order order=new Order();
-        order.setUserId(userId);
+        Order order=new Order(userId);
         repository.save(order);
 
         int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
         order.setOrderId(globalId);
         order.setOrderBroadcasted(Order.OrderBroadcasted.YES);
-        repository.save(order);
-
         sendOrderExists(order, "create");
+        repository.save(order);
 
         return globalId;
     }
@@ -190,10 +188,10 @@ public class OrderService {
     private Map<Integer, Integer> itemPrices = new HashMap<>();
 
     /**
-     * Used to initialize cache of itemIds, so false relativeToCurrent.
+     * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
     @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
+            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         int price = item.get("price");

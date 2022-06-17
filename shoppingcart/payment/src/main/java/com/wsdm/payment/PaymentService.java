@@ -168,9 +168,7 @@ public class PaymentService {
     }
 
     public Integer registerUser() {
-        Payment payment = Payment.builder()
-                .credit(0)
-                .build();
+        Payment payment = new Payment();
 
         // Convert local to global id
         paymentRepository.save(payment);

@@ -24,6 +24,12 @@ public class Stock {
     private Integer amount;
     private Integer price;
 
+    enum StockBroadcasted {
+        NO,
+        YES
+    }
+    private StockBroadcasted stockBroadcasted;
+
     /**
      * Information on how much stock.
      */
@@ -33,8 +39,9 @@ public class Stock {
     @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
     private Map<Integer, Integer> orderToItemsProcessed = new HashMap<>();
 
-    public Stock(double price){
-        amount=1;
-        price = price;
+    public Stock(int price){
+        this.amount = 0;
+        this.price = price;
+        this.stockBroadcasted = StockBroadcasted.NO;
     }
 }
