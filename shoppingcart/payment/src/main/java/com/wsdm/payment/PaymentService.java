@@ -1,9 +1,11 @@
 package com.wsdm.payment;
 
+import com.wsdm.payment.utils.NameUtils;
 import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -49,11 +51,24 @@ public class PaymentService {
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
 
+        myReplicaId = NameUtils.getHostname();
+
+        // Let kafka be able to get the hostname
+        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
         try {
-            myReplicaId = InetAddress.getLocalHost().getHostName();
-        } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
         }
+
+        // Let kafka be able to get the hostname
+        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
+        try {
+            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+
         System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
@@ -93,7 +108,7 @@ public class PaymentService {
         }
     }
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentResponse(Map<String, Object> response) {
         String replicaId = (String) response.get("replicaId");
@@ -198,7 +213,7 @@ public class PaymentService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
@@ -215,7 +230,7 @@ public class PaymentService {
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
@@ -231,7 +246,7 @@ public class PaymentService {
      * Used to initialize cache of orderIds, so false relativeToCurrent.
      * @param request
      */
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
+    @KafkaListener(groupId = "#{}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
     protected void orderExists(Map<String, Integer> request) {
         System.out.println("Received order exists " + request);

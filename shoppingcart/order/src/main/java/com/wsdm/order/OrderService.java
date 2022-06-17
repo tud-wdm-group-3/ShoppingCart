@@ -1,9 +1,11 @@
 package com.wsdm.order;
 
+import com.wsdm.order.utils.NameUtils;
 import com.wsdm.order.utils.Partitioner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
@@ -44,12 +46,16 @@ public class OrderService {
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
-        try {
-            myReplicaId = InetAddress.getLocalHost().getHostName();
-        } catch (Exception ex) {
-            System.out.println(ex.getMessage());
-        }
+        myReplicaId = NameUtils.getHostname();
         System.out.println("Order service started with replica-id " + myReplicaId);
+
+        // Let kafka be able to get the hostname
+        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
+        try {
+            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
 
         List<Order> ordersNotBroadcasted = repository.findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted.YES);
         List<Order> ordersToSave = new ArrayList<>();
@@ -190,7 +196,7 @@ public class OrderService {
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
             partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
@@ -213,7 +219,7 @@ public class OrderService {
      * By putting them in the same topic, we have a total ordering between pay and cancel,
      * so we always process in the correct order.
      */
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");

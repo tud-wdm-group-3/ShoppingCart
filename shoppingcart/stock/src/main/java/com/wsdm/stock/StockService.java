@@ -1,8 +1,10 @@
 package com.wsdm.stock;
 
+import com.wsdm.stock.utils.NameUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
@@ -22,6 +24,8 @@ public class StockService {
     @Value("${PARTITION_ID}")
     private int myStockInstanceId;
 
+    private String myReplicaId;
+
     private int numStockInstances = 2;
 
     private int numPaymentInstances = 2;
@@ -31,6 +35,16 @@ public class StockService {
     @Autowired
     public StockService(StockRepository stockRepository) {
         this.stockRepository = stockRepository;
+
+        myReplicaId = NameUtils.getHostname();
+        // Let kafka be able to get the hostname
+        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
+        try {
+            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+
         System.out.println("Stock service started");
     }
 
@@ -106,7 +120,7 @@ public class StockService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockCheck",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockCheck",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockCheck(Map<String, Object> request) {
         System.out.println("Received stock check " + request);
@@ -135,7 +149,7 @@ public class StockService {
         fromStockTemplate.send("fromStockCheck", partition, orderId, data);
     }
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockTransaction(Map<String, Object> request) {
         System.out.println("Received stock transaction " + request);
@@ -167,7 +181,7 @@ public class StockService {
         fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, data);
     }
 
-    @KafkaListener(groupId = "${random.uuid}", topicPartitions = @TopicPartition(topic = "toStockRollback",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockRollback(Map<String, Object> request) {
         System.out.println("Received stock rollback " + request);
