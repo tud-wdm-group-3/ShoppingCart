@@ -49,6 +49,7 @@ public class OrderService {
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
+        System.out.println("Order service started with replica-id " + myReplicaId);
     }
 
     public int createOrder(int userId){

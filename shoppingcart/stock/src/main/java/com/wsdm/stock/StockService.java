@@ -31,6 +31,7 @@ public class StockService {
     @Autowired
     public StockService(StockRepository stockRepository) {
         this.stockRepository = stockRepository;
+        System.out.println("Stock service started");
     }
 
     public int createItem(int price) {

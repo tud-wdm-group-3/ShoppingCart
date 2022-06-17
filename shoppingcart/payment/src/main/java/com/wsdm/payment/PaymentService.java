@@ -54,6 +54,7 @@ public class PaymentService {
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
+        System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
     public void changePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
