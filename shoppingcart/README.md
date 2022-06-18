@@ -1,3 +1,9 @@
+## How to deploy on a cluster
+
+1. Point your `kubectl` to your cluster
+2. Deploy with the `deploy.sh` script: `./deploy.sh k8s start`
+3. When done: `./deploy.sh k8s purge` to bring down everything
+
 ## How to run on minikube:
 
 1. Install minikube, kubectl, docker, helm
@@ -8,3 +14,8 @@
 6. Use `minikube dashboard` for debugging
 7. When you 're done, bring down the cluster and clean all volumes: `./deploy.sh minikube purge`
 8. Shut down minikube: `minikube stop`
+
+#### Acknowledgements
+
+1. We never really used docker-compose so the `docker-compose.yml` is outdated
+2. The Dockerfiles are at the parent directory because of the parent-child maven dependencies in the `pom.xml`s

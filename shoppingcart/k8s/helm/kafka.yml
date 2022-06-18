@@ -1,4 +1,4 @@
-replicaCount: 3
+replicaCount: 2
 numPartitions: 2
 defaultReplicationFactor: 2
 autoCreateTopicsEnable: true

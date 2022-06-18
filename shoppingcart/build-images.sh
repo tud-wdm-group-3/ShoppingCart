@@ -3,8 +3,8 @@
 # Make sure you are logged in with the docker cli (also change the handle accordingly)
 
 DOCKERHUB_HANDLE='ngavalas'
-DOCKERHUB_PUSH='false'
-MINIKUBE='true'
+DOCKERHUB_PUSH='true'
+MINIKUBE='false'
 
 
 build_push() {

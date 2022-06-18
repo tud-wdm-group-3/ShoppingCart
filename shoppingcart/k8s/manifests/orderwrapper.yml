@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: orderwrapper
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     component: orderwrapper
   ports:
@@ -32,13 +32,6 @@ spec:
             - name: SERVICE_PORT
               value: "8080"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/orderwrapper/target/orderwrapper-1.0-SNAPSHOT.jar"]
           ports:

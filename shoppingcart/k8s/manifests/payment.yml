@@ -37,7 +37,7 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: payment-db-0-postgresql
+              value: payment-db-0-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
             - name: KAFKA_SERVERS_CSL
@@ -45,13 +45,6 @@ spec:
             - name: PARTITION_ID
               value: "0"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/payment/target/payment-1.0-SNAPSHOT.jar"]
           ports:
@@ -96,7 +89,7 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: payment-db-1-postgresql
+              value: payment-db-1-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
             - name: KAFKA_SERVERS_CSL
@@ -104,13 +97,6 @@ spec:
             - name: PARTITION_ID
               value: "1"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/payment/target/payment-1.0-SNAPSHOT.jar"]
           ports:

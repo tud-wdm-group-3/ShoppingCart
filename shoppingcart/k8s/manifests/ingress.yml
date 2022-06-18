@@ -4,6 +4,7 @@ metadata:
   name: ingress-service
   annotations:
     kubernetes.io/ingress.class: nginx
+    #kubernetes.io/ingress.global-static-ip-name: "wdm"
 spec:
   rules:
     - http:
