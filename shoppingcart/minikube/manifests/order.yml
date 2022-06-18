@@ -44,9 +44,7 @@ spec:
               value: kafka
             - name: PARTITION_ID
               value: "0"
-            - name: EUREKA_SERVICE_URL
-              value: "http://eureka:8761/eureka"
-          imagePullPolicy: Never #Always
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "500Mi"
@@ -107,9 +105,7 @@ spec:
               value: kafka
             - name: PARTITION_ID
               value: "1"
-            - name: EUREKA_SERVICE_URL
-              value: "http://eureka:8761/eureka"
-          imagePullPolicy: Never #Always
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "500Mi"
