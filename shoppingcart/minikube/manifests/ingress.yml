@@ -7,7 +7,7 @@ metadata:
 spec:
   rules:
     - http:
-      paths:
+        paths:
         - path: /orders/
           pathType: Prefix
           backend:
