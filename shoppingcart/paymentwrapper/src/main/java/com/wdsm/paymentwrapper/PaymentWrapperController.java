@@ -23,7 +23,7 @@ public class PaymentWrapperController {
     private int partitions;
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
-    public ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount){
+    public ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount){
         try{
             int partition = figureOutPartition(userId);
             System.out.println("In paymentwrapper, requesting pay for userid "+userId+" and order "+orderId+" with amount "+amount+", calling partition "+partition);
@@ -100,7 +100,7 @@ public class PaymentWrapperController {
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
-    public ResponseEntity addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount){
+    public ResponseEntity addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount){
         try{
             int partition = figureOutPartition(userId);
             System.out.println("In paymentwrapper, requesting add funds for user "+userId+" and amount "+amount+", calling partition "+partition);

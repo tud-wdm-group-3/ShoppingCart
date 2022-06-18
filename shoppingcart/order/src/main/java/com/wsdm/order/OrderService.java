@@ -84,7 +84,7 @@ public class OrderService {
                 items.add(itemId);
 
                 // Increase order's total cost
-                int price = getItemPrice(itemId);
+                double price = getItemPrice(itemId);
                 order.setTotalCost(order.getTotalCost() + price);
 
                 repository.save(order);
@@ -107,7 +107,7 @@ public class OrderService {
                     items.remove(itemId);
 
                     // Decrease order's total cost
-                    int price = getItemPrice(itemId);
+                    double price = getItemPrice(itemId);
                     order.setTotalCost(order.getTotalCost() - price);
 
                     repository.save(order);
@@ -135,7 +135,7 @@ public class OrderService {
     /**
      * Map itemdId to price.
      */
-    private Map<Integer, Integer> itemPrices = new HashMap<>();
+    private Map<Integer, Double> itemPrices = new HashMap<>();
 
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent.
@@ -144,7 +144,7 @@ public class OrderService {
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "false")}))
     private void getItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
-        int price = item.get("price");
+        double price = item.get("price");
         System.out.println("Received item cache " + itemId + " with price " + price);
 
         itemPrices.put(itemId, price);
@@ -154,7 +154,7 @@ public class OrderService {
         return itemPrices.containsKey(itemId);
     }
 
-    public int getItemPrice(int itemId) {
+    public double getItemPrice(int itemId) {
         return itemPrices.get(itemId);
     }
 
@@ -166,14 +166,14 @@ public class OrderService {
     private void paymentMade(Map<String, Integer> request) {
         int orderId = request.get("orderId");
         int userId = request.get("userId");
-        int amount = request.get("amount");
+        double amount = request.get("amount");
 
         System.out.println("Received payment made with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
 
         if (!optOrder.isPresent()) {
-            throw new AssertionError("Payment made for unexisting order");
+            throw new AssertionError("Payment made for non-existent order");
         }
 
         int partition = Partitioner.getPartition(userId, numPaymentInstances);

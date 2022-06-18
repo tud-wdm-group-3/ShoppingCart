@@ -20,7 +20,7 @@ public class Stock {
 
     private Integer itemId;
     private Integer amount;
-    private Integer price;
+    private Double price;
 
     public Stock(double price){
         amount=1;
