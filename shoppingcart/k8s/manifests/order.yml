@@ -12,7 +12,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: order-0
 spec:
@@ -20,6 +20,7 @@ spec:
   selector:
     matchLabels:
       component: order-0
+  serviceName: "order-0"
   template:
     metadata:
       labels:
@@ -27,7 +28,7 @@ spec:
     spec:
       containers:
         - name: order-0
-          image: order:latest
+          image: docker.io/ngavalas/order:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -36,9 +37,13 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: order-0-db-postgresql-ha-pgpool
+              value: order-db-0-postgresql
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "0"
           imagePullPolicy: Always
           resources:
             limits:
@@ -51,7 +56,9 @@ spec:
           args: ["-jar", "/srv/order/target/order-1.0-SNAPSHOT.jar"]
           ports:
             - containerPort: 8080
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -66,7 +73,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: order-1
 spec:
@@ -74,6 +81,7 @@ spec:
   selector:
     matchLabels:
       component: order-1
+  serviceName: "order-1"
   template:
     metadata:
       labels:
@@ -81,7 +89,7 @@ spec:
     spec:
       containers:
         - name: order-1
-          image: order:latest
+          image: docker.io/ngavalas/order:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -90,9 +98,13 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: order-1-db-postgresql-ha-pgpool
+              value: order-db-1-postgresql
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "1"
           imagePullPolicy: Always
           resources:
             limits:

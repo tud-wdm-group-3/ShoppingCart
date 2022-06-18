@@ -1,32 +1,31 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
- name: ingress-service
- annotations:
-   kubernetes.io/ingress.class: nginx
-   nginx.ingress.kubernetes.io/rewrite-target: /$1
+  name: ingress-service
+  annotations:
+    kubernetes.io/ingress.class: nginx
 spec:
- rules:
-   - http:
-      paths:
-        - path: /orders/?(.*)
-          pathType: Prefix
-          backend:
-            service:
-              name: order-0    # TODO: connect to wrapper
-              port:
-                number: 8080
-        - path: /stock/?(.*)
-          pathType: Prefix
-          backend:
-            service:
-              name: stock-0    # TODO: connect to wrapper
-              port:
-                number: 8080
-        - path: /payment/?(.*)
-          pathType: Prefix
-          backend:
-            service:
-              name: payment-0  # TODO: connect to wrapper
-              port:
-                number: 8080
+  rules:
+    - http:
+        paths:
+          - path: /orders/
+            pathType: Prefix
+            backend:
+              service:
+                name: orderwrapper
+                port:
+                  number: 8080
+          - path: /stock/
+            pathType: Prefix
+            backend:
+              service:
+                name: stockwrapper
+                port:
+                  number: 8080
+          - path: /payment/
+            pathType: Prefix
+            backend:
+              service:
+                name: paymentwrapper
+                port:
+                  number: 8080
