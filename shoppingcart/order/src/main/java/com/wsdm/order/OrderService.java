@@ -3,6 +3,7 @@ package com.wsdm.order;
 import com.wsdm.order.utils.ItemPrices;
 import com.wsdm.order.utils.NameUtils;
 import com.wsdm.order.utils.Partitioner;
+import com.wsdm.order.utils.Template;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
@@ -36,21 +37,25 @@ public class OrderService {
         return myReplicaId;
     }
 
-    private int numStockInstances = 2;
+    private static int numStockInstances = 2;
 
-    private int numPaymentInstances = 2;
+    private static int numPaymentInstances = 2;
 
-    private int numOrderInstances = 2;
+    private static int numOrderInstances = 2;
 
-    final OrderRepository repository;
+    private static OrderRepository repository;
 
-    @Autowired
     private TransactionHandler transactionHandler;
 
+    private KafkaTemplate<Integer, Object> kafkaTemplate;
+
     @Autowired
-    public OrderService(OrderRepository repository) {
+    public OrderService(OrderRepository repository, KafkaTemplate<Integer, Object> kafkaTemplate) {
         this.repository = repository;
         System.out.println("Order service started with replica-id " + myReplicaId);
+
+        Template.addTemplate(kafkaTemplate);
+        transactionHandler = new TransactionHandler(repository);
 
         List<Order> ordersNotBroadcasted = repository.findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted.YES);
         List<Order> ordersToSave = new ArrayList<>();
@@ -75,8 +80,8 @@ public class OrderService {
 
     public int createOrder(int userId){
         Order order=new Order(userId);
-        repository.save(order);
 
+        repository.save(order);
         int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
         order.setOrderId(globalId);
         order.setOrderBroadcasted(Order.OrderBroadcasted.YES);
@@ -150,7 +155,7 @@ public class OrderService {
             if (mayChangeOrder(order)) {
                 List<Integer> items = order.getItems();
                 if (items.contains(itemId)) {
-                    items.remove(itemId);
+                    items.remove(Integer.valueOf(itemId));
 
                     // Decrease order's total cost
                     int price = ItemPrices.getItemPrice(itemId);
@@ -186,11 +191,6 @@ public class OrderService {
      * Item cost and payment functions below. Needed here because need functionality of service
      */
 
-    @Autowired
-    private KafkaTemplate<Integer, Object> kafkaTemplate;
-
-
-
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
@@ -200,7 +200,6 @@ public class OrderService {
         int itemId = item.get("itemId");
         int price = item.get("price");
         System.out.println("Received item cache " + itemId + " with price " + price);
-        System.out.println(Thread.currentThread().getId());
 
         ItemPrices.addItemPrice(itemId, price);
     }
@@ -211,7 +210,7 @@ public class OrderService {
      * so we always process in the correct order.
      */
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     private void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
@@ -235,14 +234,16 @@ public class OrderService {
             return;
         }
 
-        if (type == "pay") {
+        if (type.contains("pay")) {
             if (mayChangeOrder(order) && order.getTotalCost() == amount) {
+                System.out.println("respond true");
                 respondToPaymentChange(orderId, userId, true, "pay", replicaId, paymentKey, -1);
                 setPaid(order, true, paymentKey);
             } else {
+                System.out.println("respond false");
                 respondToPaymentChange(orderId, userId, false, "pay", replicaId, paymentKey, amount);
             }
-        } else if (type == "cancel") {
+        } else if (type.contains("cancel")) {
             if (mayCancelOrder(order)) {
                 respondToPaymentChange(orderId, userId, true, "cancel", replicaId, paymentKey, -1);
                 setPaid(order, false, paymentKey);
@@ -255,11 +256,13 @@ public class OrderService {
 
     private void respondToPaymentChange(int orderId, int userId, boolean result, String type, String replicaId, int paymentKey, int refund) {
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
-        Map<String, Object> data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey);
+        Map<String, Object> data;
         if (refund != -1 && !result && type == "pay") {
-            data.put("refund", refund);
+            data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey, "refund", refund);
+        } else {
+            data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey);
         }
-        kafkaTemplate.send("toPaymentResponse", partition, orderId, data);
+        Template.send("toPaymentResponse", partition, orderId, data);
     }
 
     private void setPaid(Order order, boolean paid, int paymentKey) {
@@ -275,7 +278,8 @@ public class OrderService {
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
 
         Map<String, Object> data = Map.of("orderId", order.getOrderId(), "userId", userId, "method", method);
-        kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), data);
+
+        Template.send("toPaymentOrderExists", partition, order.getOrderId(), data);
     }
 
     private boolean mayChangeOrder(Order order) {

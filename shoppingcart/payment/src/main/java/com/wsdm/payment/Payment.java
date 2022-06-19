@@ -31,9 +31,9 @@ public class Payment {
     /**
      * Information on how much is paid.
      */
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyColumn(name="name")
     @Column(name="value")
-    @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
+    @CollectionTable(name="orderIdToPaidAmount")
     private Map<Integer, Integer> orderIdToPaidAmount = new HashMap<>();
 }

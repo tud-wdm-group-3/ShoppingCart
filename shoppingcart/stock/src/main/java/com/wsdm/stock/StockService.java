@@ -29,11 +29,11 @@ public class StockService {
         return myReplicaId;
     }
 
-    private int numStockInstances = 2;
+    private static int numStockInstances = 2;
 
-    private int numPaymentInstances = 2;
+    private static int numPaymentInstances = 2;
 
-    private int numOrderInstances = 2;
+    private static int numOrderInstances = 2;
 
     @Autowired
     public StockService(StockRepository stockRepository) {
@@ -119,7 +119,7 @@ public class StockService {
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockCheck(Map<String, Object> request) {
         System.out.println("Received stock check " + request);
         int orderId = (int) request.get("orderId");
@@ -148,7 +148,7 @@ public class StockService {
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockTransaction(Map<String, Object> request) {
         System.out.println("Received stock transaction " + request);
         int orderId = (int) request.get("orderId");
@@ -180,7 +180,7 @@ public class StockService {
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getStockRollback(Map<String, Object> request) {
         System.out.println("Received stock rollback " + request);
         int orderId = (int) request.get("orderId");

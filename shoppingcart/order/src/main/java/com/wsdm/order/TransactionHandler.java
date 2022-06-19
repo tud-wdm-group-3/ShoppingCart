@@ -2,6 +2,7 @@ package com.wsdm.order;
 
 import com.wsdm.order.utils.NameUtils;
 import com.wsdm.order.utils.Partitioner;
+import com.wsdm.order.utils.Template;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,13 +24,13 @@ import java.util.*;
 public class TransactionHandler {
 
     @Value("${PARTITION}")
-    private int myOrderInstanceId;
+    private static int myOrderInstanceId;
 
-    private int numStockInstances = 2;
+    private static int numStockInstances = 2;
 
-    private int numPaymentInstances = 2;
+    private static int numPaymentInstances = 2;
 
-    private int numOrderInstances = 2;
+    private static int numOrderInstances = 2;
 
     private String myReplicaId = NameUtils.getHostname();
     public String getMyReplicaId() {
@@ -39,31 +40,28 @@ public class TransactionHandler {
     /**
      * Maps orderId to deferredResult.
      */
-    private Map<Integer, DeferredResult<ResponseEntity>> pendingResponses = new HashMap<>();
+    private static Map<Integer, DeferredResult<ResponseEntity>> pendingResponses = new HashMap<>();
 
     /**
      * Map orderId to order for caching purposes.
      */
-    private Map<Integer, Order> currentCheckoutOrders = new HashMap<>();
+    private static Map<Integer, Order> currentCheckoutOrders = new HashMap<>();
 
     /**
      * Map orderId to properties map, including total, count, flag etc.
      */
-    private Map<Integer, Map> stockCheckLog = new HashMap<>();
+    private static Map<Integer, Map> stockCheckLog = new HashMap<>();
 
     /**
      * Map orderId to properties map, including total, count, and
      * a special map (confirmations) containing which partitions confirmed the transaction.
      */
-    private Map<Integer, Map> transactionLog = new HashMap<>();
+    private static Map<Integer, Map> transactionLog = new HashMap<>();
 
-    @Autowired
-    private KafkaTemplate<Integer, Object> kafkaTemplate;
+    private static OrderRepository orderRepository;
 
-    final private OrderRepository orderRepository;
-
-    public TransactionHandler(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
+    public TransactionHandler(OrderRepository repository) {
+        orderRepository = repository;
 
         // Do the rollbacks for the failed orders.
         List<Order> failedOrders = orderRepository.findOrdersByInCheckoutAndReplicaHandlingCheckout(true, myReplicaId);
@@ -109,17 +107,16 @@ public class TransactionHandler {
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
-            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
+            Template.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
         }
     }
 
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromStockCheck",
-                    partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+                    partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
-        if (currentCheckoutOrders.containsKey(orderId)) {
-            System.out.println("got stock response " + stockResponse);
+        if (currentCheckoutOrders.containsKey(orderId) && stockCheckLog.containsKey(orderId)) {
 
 
             boolean enoughInStock = (boolean) stockResponse.get("enoughInStock");
@@ -164,13 +161,14 @@ public class TransactionHandler {
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "totalCost", order.getTotalCost());
 
-        kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
+        Template.send("toPaymentTransaction", partition, order.getOrderId(), data);
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
         int orderId = (int) paymentResponse.get("orderId");
+
         if (currentCheckoutOrders.containsKey(orderId)) {
             System.out.println("get payment response " + paymentResponse);
 
@@ -202,15 +200,15 @@ public class TransactionHandler {
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
             Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
-            kafkaTemplate.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
+            Template.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), data);
         }
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
-        if (currentCheckoutOrders.containsKey(orderId)) {
+        if (currentCheckoutOrders.containsKey(orderId) && transactionLog.containsKey(orderId)) {
             System.out.println("received stock transaction response " + stockResponse);
 
 
@@ -248,8 +246,9 @@ public class TransactionHandler {
         for (int stockId : confirmations.keySet()) {
             if (confirmations.get(stockId)) {
                 // This stock id returned true, so we must rollback
-                List<Integer> partitionItems = stockPartition.get(stockPartition);
-                kafkaTemplate.send("toStockRollback", stockId, order.getOrderId(), partitionItems);
+                List<Integer> partitionItems = stockPartition.get(stockId);
+                Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionItems);
+                Template.send("toStockRollback", stockId, order.getOrderId(), data);
             }
         }
     }
@@ -258,8 +257,8 @@ public class TransactionHandler {
         System.out.println("Sending payment rollback for order" + order);
         int userId = order.getUserId();
         int paymentPartition = Partitioner.getPartition(userId, numPaymentInstances);
-        Map<String, Object> data = Map.of("userId", userId, "totalCost", order.getTotalCost());
-        kafkaTemplate.send("toPaymentRollback", paymentPartition, order.getOrderId(), data);
+        Map<String, Object> data = Map.of("orderId", order.getOrderId(), "userId", userId, "refund", order.getTotalCost());
+        Template.send("toPaymentRollback", paymentPartition, order.getOrderId(), data);
     }
 
     private void transactionFailed(int orderId) {

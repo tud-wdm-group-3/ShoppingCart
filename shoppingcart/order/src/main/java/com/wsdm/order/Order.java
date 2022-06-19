@@ -24,7 +24,7 @@ public class Order {
 
     private int orderId;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<Integer> items;
     private int userId;
     private int totalCost;
@@ -38,7 +38,7 @@ public class Order {
     }
     private OrderBroadcasted orderBroadcasted;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private Set<Integer> processedPaymentKeys;
 
     private boolean inCheckout;

@@ -1,5 +1,6 @@
 package com.wsdm.payment;
 
+import com.wsdm.payment.utils.ExistingOrders;
 import com.wsdm.payment.utils.NameUtils;
 import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -31,18 +32,13 @@ public class PaymentService {
         return myReplicaId;
     }
 
-    private int numStockInstances = 2;
+    private static int numStockInstances = 2;
 
-    private int numPaymentInstances = 2;
+    private static int numPaymentInstances = 2;
 
-    private int numOrderInstances = 2;
+    private static int numOrderInstances = 2;
 
     final PaymentRepository paymentRepository;
-
-    /**
-     * A log of current order statuses
-     */
-    private Map<Integer, Set<Integer>> existingOrders = new HashMap<>();
 
     /**
      * Maps orderId to deferredResult.
@@ -61,7 +57,7 @@ public class PaymentService {
     }
 
     public void changePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
-        if (!orderExists(userId, orderId)) {
+        if (!ExistingOrders.orderExists(userId, orderId)) {
             response.setResult(ResponseEntity.notFound().build());
             return;
         }
@@ -97,7 +93,7 @@ public class PaymentService {
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     public void paymentResponse(Map<String, Object> response) {
         String replicaId = (String) response.get("replicaId");
         int orderId = (int) response.get("orderId");
@@ -109,9 +105,9 @@ public class PaymentService {
 
         // It must be processed by this replica, because only the replica can know whether he still has the
         // pending response.
-        if (replicaId == myReplicaId && !payment.getProcessedPaymentKeys().contains(paymentKey)) {
-            System.out.println("Received payment response " + response);
-            if (type == "pay") {
+        System.out.println("Received payment response " + response);
+        if (replicaId.contains(myReplicaId) && !payment.getProcessedPaymentKeys().contains(paymentKey)) {
+            if (type.contains("pay")) {
                 // Check if the payment went through
                 if (isPaid(payment, orderId)) {
                     if (result) {
@@ -125,7 +121,7 @@ public class PaymentService {
                     // order thinks we paid, but we failed to save
                     sendChangePaymentToOrder(orderId, userId, "cancel", -1);
                 }
-            } else if (type == "cancel") {
+            } else if (type.contains("cancel")) {
                 if (result) {
                     cancel(payment, orderId, -1);
                     respondToUser(orderId, true);
@@ -143,8 +139,10 @@ public class PaymentService {
     private void respondToUser(int orderId, boolean ok) {
         if (pendingPaymentResponses.containsKey(orderId)) {
             if (ok) {
+                System.out.println("ok!!");
                 pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
             } else {
+                System.out.println("not ok!!");
                 pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
             }
         }
@@ -153,12 +151,12 @@ public class PaymentService {
     private void sendChangePaymentToOrder(int orderId, int userId, String type, int amount) {
         int paymentKey = getKey();
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
-        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", type, "amount", amount, "myReplicaId", myReplicaId, "paymentKey", paymentKey);
+        Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", type, "amount", amount, "replicaId", myReplicaId, "paymentKey", paymentKey);
         fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
     }
 
     public Object getPaymentStatus(Integer userId, Integer orderId) {
-        if (orderExists(userId, orderId)) {
+        if (ExistingOrders.orderExists(userId, orderId)) {
             Optional<Payment> optPayment = findUser(userId);
             if (!optPayment.isPresent()) {
                 return false;
@@ -188,6 +186,9 @@ public class PaymentService {
     }
 
     public boolean addFunds(Integer userId, Integer amount) {
+        if (amount <= 0) {
+            return false;
+        }
         Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             return false;
@@ -202,7 +203,7 @@ public class PaymentService {
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
@@ -212,14 +213,13 @@ public class PaymentService {
         Payment payment = getPaymentWithError(userId);
         boolean paid = pay(payment, orderId, cost);
 
-        System.out.println(payment);
         int partition = orderId % numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", paid);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
@@ -242,25 +242,12 @@ public class PaymentService {
         String method = (String) request.get("method");
         int userId = (int) request.get("userId");
 
-        if (method == "create" ) {
+        if (method.contains("create")) {
             // We do not care if user does not exist, will fail later anyway
-            if (!existingOrders.containsKey(userId)) {
-                existingOrders.put(userId, new HashSet<>());
-            }
-            existingOrders.get(userId).add(orderId);
-        } else if (method == "delete"){
-            assert(orderExists(userId, orderId));
-            existingOrders.get(userId).remove(orderId);
+            ExistingOrders.addOrder(userId, orderId);
+        } else if (method.contains("delete")){
+            ExistingOrders.removeOrder(userId, orderId);
         }
-    }
-
-    private boolean orderExists(int userId, int orderId) {
-        System.out.println("orderExists");
-        System.out.println(existingOrders);
-        if (existingOrders.containsKey(userId)) {
-            return existingOrders.get(userId).contains(orderId);
-        }
-        return false;
     }
 
     private boolean isPaid(Payment payment, int orderId) {
@@ -273,6 +260,7 @@ public class PaymentService {
         if (enoughCredit) {
             if (!isPaid(payment, orderId)) {
                 Map<Integer, Integer> orderIdToPaid = payment.getOrderIdToPaidAmount();
+                System.out.println(orderIdToPaid);
                 orderIdToPaid.put(orderId, cost);
                 payment.setOrderIdToPaidAmount(orderIdToPaid);
                 payment.setCredit(credit - cost);

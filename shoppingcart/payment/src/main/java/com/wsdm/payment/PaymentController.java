@@ -54,14 +54,20 @@ public class PaymentController {
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
-    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
+    public Map<String, Boolean> addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
         System.out.println("Adding " + amount + " to funds of user " + userId);
-        return paymentService.addFunds(userId, amount);
+        return Map.of("done", paymentService.addFunds(userId, amount));
     }
 
     @GetMapping(path="find_user/{user_id}")
-    public Optional<Payment> findUser(@PathVariable("user_id") Integer userId) {
+    public Object findUser(@PathVariable("user_id") Integer userId) {
         System.out.println("Finding user " + userId);
-        return paymentService.findUser(userId);
+        Optional<Payment> optPayment = paymentService.findUser(userId);
+        if (optPayment.isPresent()) {
+            Payment payment = optPayment.get();
+            return Map.of("user_id", payment.getUserId(), "credit", payment.getCredit());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

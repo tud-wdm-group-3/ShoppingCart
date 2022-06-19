@@ -33,10 +33,10 @@ public class Stock {
     /**
      * Information on how much stock.
      */
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyColumn(name="name")
     @Column(name="value")
-    @CollectionTable(name="orderIdToPaidAmount", joinColumns=@JoinColumn(name="id"))
+    @CollectionTable(name="orderIdToItemsProcessed")
     private Map<Integer, Integer> orderToItemsProcessed = new HashMap<>();
 
     public Stock(int price){

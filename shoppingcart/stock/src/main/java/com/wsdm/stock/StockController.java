@@ -21,7 +21,7 @@ public record StockController(StockService stockService) {
         System.out.println("Finding item " + item_id);
         Optional<Stock> stock = stockService.findItem(item_id);
         if (stock.isPresent()){
-            return Map.of("amount", stock.get().getAmount(), "price", stock.get().getPrice());
+            return Map.of("stock", stock.get().getAmount(), "price", stock.get().getPrice());
         }
         ResponseEntity response = ResponseEntity.notFound().build();
         return response;
