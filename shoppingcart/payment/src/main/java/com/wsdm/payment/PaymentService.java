@@ -238,7 +238,7 @@ public class PaymentService {
      * Used to initialize cache of orderIds, so false relativeToCurrent.
      * @param request
      */
-    @KafkaListener(groupId = "#{}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
     protected void orderExists(Map<String, Integer> request) {
         System.out.println("Received order exists " + request);
