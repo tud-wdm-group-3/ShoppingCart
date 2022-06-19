@@ -279,7 +279,7 @@ public class OrderService {
         int userId = order.getUserId();
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
 
-        Map<String, Object> data = Map.of("userId", userId, "method", method);
+        Map<String, Object> data = Map.of("orderId", order.getOrderId(), "userId", userId, "method", method);
         kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), data);
     }
 

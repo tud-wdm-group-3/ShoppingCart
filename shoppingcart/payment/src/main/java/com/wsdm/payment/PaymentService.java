@@ -244,7 +244,7 @@ public class PaymentService {
      */
     @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
-    protected void orderExists(Map<String, Integer> request) {
+    protected void receiveOrderExists(Map<String, Integer> request) {
         System.out.println("Received order exists " + request);
         int orderId = request.get("orderId");
         int method = request.get("method");
@@ -264,7 +264,10 @@ public class PaymentService {
     }
 
     private boolean orderExists(int userId, int orderId) {
-        return existingOrders.containsKey(userId) && existingOrders.get(userId).contains(orderId);
+        if (existingOrders.containsKey(userId)) {
+            return existingOrders.get(userId).contains(orderId);
+        }
+        return false;
     }
 
     private boolean isPaid(Payment payment, int orderId) {
