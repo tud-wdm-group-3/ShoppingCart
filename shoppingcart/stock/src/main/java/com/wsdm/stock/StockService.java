@@ -48,6 +48,10 @@ public class StockService {
         System.out.println("Stock service started");
     }
 
+    public List<Stock> dump() {
+        return stockRepository.findAll();
+    }
+
     public int createItem(int price) {
         Stock stock = new Stock(price);
 

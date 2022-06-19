@@ -20,7 +20,7 @@ public class PaymentController {
 
     @GetMapping(path = "/dump")
     public List<Payment> dump() {
-        return paymentService.paymentRepository.findAll();
+        return paymentService.dump();
     }
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")

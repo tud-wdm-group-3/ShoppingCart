@@ -66,6 +66,10 @@ public class OrderService {
         repository.saveAll(ordersToSave);
     }
 
+    public List<Order> dump() {
+        return this.repository.findAll();
+    }
+
     public int createOrder(int userId){
         Order order=new Order(userId);
         repository.save(order);

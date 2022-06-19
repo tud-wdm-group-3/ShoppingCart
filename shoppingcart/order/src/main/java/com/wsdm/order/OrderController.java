@@ -21,7 +21,7 @@ public class OrderController {
 
     @GetMapping(path = "/dump")
     public List<Order> dump() {
-        return service.repository.findAll();
+        return service.dump();
     }
     
     @PostMapping(path = "/create/{userId}")

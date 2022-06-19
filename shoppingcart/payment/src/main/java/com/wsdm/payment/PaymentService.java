@@ -64,6 +64,10 @@ public class PaymentService {
         System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
+    public List<Payment> dump() {
+        return paymentRepository.findAll();
+    }
+
     public void changePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
         if (!orderExists(userId, orderId)) {
             response.setResult(ResponseEntity.notFound().build());
