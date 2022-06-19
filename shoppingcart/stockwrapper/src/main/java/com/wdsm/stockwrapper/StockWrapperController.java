@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,7 +28,7 @@ public class StockWrapperController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping(path="/find/{item_id}")
+    @GetMapping(path="/find/{item_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity findItem(@PathVariable(name="item_id") int item_id){
         try{
             int partition = figureOutPartition(item_id);
@@ -46,7 +47,7 @@ public class StockWrapperController {
         }
     }
 
-    @PostMapping(path="/subtract/{item_id}/{amount}")
+    @PostMapping(path="/subtract/{item_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity subtractStock(@PathVariable(name="item_id") int item_id,
                                         @PathVariable(name="amount") int amount){
         try{
@@ -66,7 +67,7 @@ public class StockWrapperController {
         }
     }
 
-    @PostMapping(path="/add/{item_id}/{amount}")
+    @PostMapping(path="/add/{item_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addStock(@PathVariable(name="item_id") int item_id,
                                    @PathVariable(name="amount") int amount){
         try{
@@ -86,7 +87,7 @@ public class StockWrapperController {
         }
     }
 
-    @PostMapping(path="/item/create/{price}")
+    @PostMapping(path="/item/create/{price}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addItem(@PathVariable(name="price") double price){
         try{
             int partition = figureOutPartition(-1);

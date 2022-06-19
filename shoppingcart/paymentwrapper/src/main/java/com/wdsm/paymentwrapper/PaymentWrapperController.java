@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,7 +28,7 @@ public class PaymentWrapperController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
+    @PostMapping(path="pay/{user_id}/{order_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount){
         try{
             int partition = figureOutPartition(userId);
@@ -47,7 +48,7 @@ public class PaymentWrapperController {
 
     }
 
-    @PostMapping(path="cancel/{user_id}/{order_id}")
+    @PostMapping(path="cancel/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId){
         try{
             int partition=figureOutPartition(userId);
@@ -66,7 +67,7 @@ public class PaymentWrapperController {
         }
     }
 
-    @GetMapping(path="status/{user_id}/{order_id}")
+    @GetMapping(path="status/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity getStatus(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId){
         try{
             int partition=figureOutPartition(userId);
@@ -85,7 +86,7 @@ public class PaymentWrapperController {
         }
     }
     //no partitioning needed
-    @PostMapping(path="create_user")
+    @PostMapping(path="create_user", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity registerUser(){
         try{
             int partition=figureOutPartition(-1);
@@ -104,7 +105,7 @@ public class PaymentWrapperController {
         }
     }
 
-    @PostMapping(path="add_funds/{user_id}/{amount}")
+    @PostMapping(path="add_funds/{user_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount){
         try{
             int partition = figureOutPartition(userId);
@@ -121,7 +122,7 @@ public class PaymentWrapperController {
         }
     }
 
-    @GetMapping(path="find_user/{user_id}")
+    @GetMapping(path="find_user/{user_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity findUser(@PathVariable("user_id") Integer userId){
         try{
             int partition = figureOutPartition(userId);

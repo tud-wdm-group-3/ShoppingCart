@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,7 +27,7 @@ public class OrderWrapperController {
 
 
     //doesn't need partitioning
-    @PostMapping(value="/create/{userId}")
+    @PostMapping(value="/create/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity create(@PathVariable(name="userId") int userId){
         try{
             int partition=figureOutPartition(-1);
@@ -47,7 +48,7 @@ public class OrderWrapperController {
     }
 
     //needs partitioning
-    @DeleteMapping("/remove/{orderId}")
+    @DeleteMapping("/remove/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
         try{
             int partition=figureOutPartition(orderId);
@@ -65,7 +66,7 @@ public class OrderWrapperController {
         }
     }
     //needs partitioning
-    @GetMapping(path = "/find/{orderId}")
+    @GetMapping(path = "/find/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity find(@PathVariable(name="orderId") int orderId) {
         try {
             int partition=figureOutPartition(orderId);
@@ -84,7 +85,7 @@ public class OrderWrapperController {
     }
 
     //needs partitioning
-    @PostMapping(path = "/addItem/{orderId}/{itemId}")
+    @PostMapping(path = "/addItem/{orderId}/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
         try{
@@ -103,7 +104,7 @@ public class OrderWrapperController {
         }
     }
     //needs partitioning
-    @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
+    @DeleteMapping(path = "/removeItem/{orderId}/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                            @PathVariable(name="itemId") int itemId) {
         try{
@@ -122,7 +123,7 @@ public class OrderWrapperController {
         }
     }
     //needs partitioning
-    @PostMapping(path = "/checkout/{orderId}")
+    @PostMapping(path = "/checkout/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
         try{
             int partition=figureOutPartition(orderId);
