@@ -199,7 +199,11 @@ public class OrderService {
         int price = item.get("price");
         System.out.println("Received item cache " + itemId + " with price " + price);
 
-        itemPrices.put(itemId, price);
+        if (this.itemPrices == null) {
+            System.out.println("map is null again");
+            this.itemPrices = new HashMap<>();
+        }
+        this.itemPrices.put(itemId, price);
     }
 
     public boolean itemExists(int itemId) {
