@@ -3,6 +3,7 @@ package com.wsdm.stock;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.util.*;
 
@@ -16,7 +17,7 @@ public record StockController(StockService stockService) {
         return stockService.stockRepository.findAll();
     }
 
-    @GetMapping(path="/find/{item_id}")
+    @GetMapping(path="/find/{item_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object findItem(@PathVariable(name="item_id") int item_id){
         System.out.println("Finding item " + item_id);
         Optional<Stock> stock = stockService.findItem(item_id);
@@ -27,7 +28,7 @@ public record StockController(StockService stockService) {
         return response;
     }
 
-    @PostMapping(path="/subtract/{item_id}/{amount}")
+    @PostMapping(path="/subtract/{item_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity subtractStock(@PathVariable(name="item_id") int item_id,
                          @PathVariable(name="amount") int amount) {
         System.out.println("subtracting stock to " + item_id + " with amount " + amount);
@@ -40,7 +41,7 @@ public record StockController(StockService stockService) {
             return ResponseEntity.badRequest().build();
     }
 
-    @PostMapping(path="/add/{item_id}/{amount}")
+    @PostMapping(path="/add/{item_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addStock(@PathVariable(name="item_id") int item_id,
                                            @PathVariable(name="amount") int amount) {
         System.out.println("adding stock to " + item_id + " with amount " + amount);
@@ -53,7 +54,7 @@ public record StockController(StockService stockService) {
             return ResponseEntity.notFound().build();
     }
 
-    @PostMapping(path="/item/create/{price}")
+    @PostMapping(path="/item/create/{price}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object addItem(@PathVariable(name="price") double price) {
         if (price <= 0)
             return ResponseEntity.badRequest().build();

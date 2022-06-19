@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,7 @@ public class PaymentController {
         return paymentService.paymentRepository.findAll();
     }
 
-    @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
+    @PostMapping(path="pay/{user_id}/{order_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount) {
         System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
@@ -32,7 +33,7 @@ public class PaymentController {
         return response;
     }
 
-    @PostMapping(path="cancel/{user_id}/{order_id}")
+    @PostMapping(path="cancel/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         System.out.println("Received cancel from user " + userId + " for order " + orderId);
         boolean completed = paymentService.cancelPayment(userId, orderId);
@@ -42,26 +43,26 @@ public class PaymentController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping(path="status/{user_id}/{order_id}")
+    @GetMapping(path="status/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object getStatus(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         System.out.println("Get status from user " + userId + " and order " + orderId);
         return paymentService.getPaymentStatus(userId, orderId);
     }
 
-    @PostMapping(path="create_user")
+    @PostMapping(path="create_user", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Integer> registerUser() {
         int userId = paymentService.registerUser();
         System.out.println("Registered user with userId " + userId);
         return Map.of("user_id", userId);
     }
 
-    @PostMapping(path="add_funds/{user_id}/{amount}")
+    @PostMapping(path="add_funds/{user_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount) {
         System.out.println("Adding " + amount + " to funds of user " + userId);
         return paymentService.addFunds(userId, amount);
     }
 
-    @GetMapping(path="find_user/{user_id}")
+    @GetMapping(path="find_user/{user_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Optional<Payment> findUser(@PathVariable("user_id") Integer userId) {
         System.out.println("Finding user " + userId);
         return paymentService.findUser(userId);
