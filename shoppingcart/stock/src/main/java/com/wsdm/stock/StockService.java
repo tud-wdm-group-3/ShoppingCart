@@ -21,7 +21,7 @@ public class StockService {
 
     final StockRepository stockRepository;
 
-    @Value("${PARTITION_ID}")
+    @Value("${PARTITION}")
     private int myStockInstanceId;
 
     private String myReplicaId;
@@ -121,7 +121,7 @@ public class StockService {
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getStockCheck(Map<String, Object> request) {
         System.out.println("Received stock check " + request);
         int orderId = (int) request.get("orderId");
@@ -150,7 +150,7 @@ public class StockService {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getStockTransaction(Map<String, Object> request) {
         System.out.println("Received stock transaction " + request);
         int orderId = (int) request.get("orderId");
@@ -182,7 +182,7 @@ public class StockService {
     }
 
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toStockRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getStockRollback(Map<String, Object> request) {
         System.out.println("Received stock rollback " + request);
         int orderId = (int) request.get("orderId");

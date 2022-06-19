@@ -27,7 +27,7 @@ import java.util.concurrent.Future;
 @Service
 @Transactional(isolation = Isolation.SERIALIZABLE)
 public class OrderService {
-    @Value("${PARTITION_ID}")
+    @Value("${PARTITION}")
     private int myOrderInstanceId;
 
     private String myReplicaId;
@@ -220,7 +220,7 @@ public class OrderService {
      * so we always process in the correct order.
      */
     @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "-1", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
