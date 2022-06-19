@@ -19,7 +19,7 @@ public class OrderWrapperController {
     @Value("${partitions}")
     private int partitions;
 
-    @GetMapping(path="/")
+    @GetMapping(path="/health")
     public ResponseEntity health(){
         return ResponseEntity.ok().build();
     }
