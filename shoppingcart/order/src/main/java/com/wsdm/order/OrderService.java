@@ -124,6 +124,7 @@ public class OrderService {
             if (mayChangeOrder(order)) {
                 List<Integer> items = order.getItems();
                 items.add(itemId);
+                order.setItems(items);
 
                 // Increase order's total cost
                 int price = getItemPrice(itemId);
