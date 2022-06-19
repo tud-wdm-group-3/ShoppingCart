@@ -25,7 +25,7 @@ public class Order {
     @ElementCollection
     private List<Integer> items;
     private int userId;
-    private int totalCost;
+    private double totalCost;
     private boolean paid;
     private boolean inCheckout;
 
@@ -33,7 +33,7 @@ public class Order {
     {
         items = new ArrayList<>();
         userId = userId;
-        totalCost = 0;
+        totalCost = 0.0;
         paid = false;
         inCheckout = false;
     }

@@ -48,7 +48,7 @@ public class PaymentService {
         orderStatuses = new HashMap<>();
     }
 
-    public void makePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response) {
+    public void makePayment(Integer userId, Integer orderId, Double amount, DeferredResult<ResponseEntity> response) {
         if (!orderStatuses.containsKey(orderId)) {
             response.setResult(ResponseEntity.notFound().build());
             return;
@@ -62,7 +62,7 @@ public class PaymentService {
 
         Payment payment = optPaymentUser.get();
 
-        int credit = payment.getCredit();
+        double credit = payment.getCredit();
         boolean enoughCredit = credit >= amount;
         if (!enoughCredit) {
             response.setResult(ResponseEntity.badRequest().build());
@@ -117,8 +117,8 @@ public class PaymentService {
         }
 
         Payment payment = optPaymentUser.get();
-        int refund = (int) orderStatuses.get(orderId).get("amountPaid");
-        int credit = payment.getCredit();
+        double refund = (double) orderStatuses.get(orderId).get("amountPaid");
+        double credit = payment.getCredit();
         payment.setCredit(credit + refund);
         paymentRepository.save(payment);
 
@@ -144,7 +144,7 @@ public class PaymentService {
 
     public Integer registerUser() {
         Payment payment = Payment.builder()
-                .credit(0)
+                .credit(0.0)
                 .build();
 
         // Convert local to global id
@@ -161,7 +161,7 @@ public class PaymentService {
         return paymentRepository.findById(localId);
     }
 
-    public boolean addFunds(Integer userId, Integer amount) {
+    public boolean addFunds(Integer userId, Double amount) {
         Optional<Payment> optPaymentUser = findUser(userId);
         if (optPaymentUser.isEmpty()) {
             throw new IllegalStateException("user with Id " + userId + " does not exist");
@@ -181,14 +181,14 @@ public class PaymentService {
         System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
-        int cost = (int) request.get("totalCost");
+        double cost = (double) request.get("totalCost");
         Optional<Payment> optPayment = findUser(userId);
         if (!optPayment.isPresent()) {
             throw new IllegalStateException("unknown user");
         }
         Payment payment = optPayment.get();
         System.out.println(payment);
-        int credit = payment.getCredit();
+        double credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
         if (enoughCredit) {
             System.out.println("enough");
@@ -208,10 +208,10 @@ public class PaymentService {
         System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
-        int refund = (int) request.get("refund");
+        double refund = (double) request.get("refund");
         Payment user = paymentRepository.getById(userId);
-        orderStatuses.put(orderId,  Map.of("userId", userId, "amountPaid", 0, "paid", false));
-        int credit = user.getCredit();
+        orderStatuses.put(orderId,  Map.of("userId", userId, "amountPaid", 0.0, "paid", false));
+        double credit = user.getCredit();
         user.setCredit(credit + refund);
         paymentRepository.save(user);
     }
@@ -227,7 +227,6 @@ public class PaymentService {
         int orderId = request.get("orderId");
         int method = request.get("method");
         int userId = request.get("userId");
-        int totalCost = request.get("totalCost");
 
         // method = 0 for add
         if (method == 0 ) {

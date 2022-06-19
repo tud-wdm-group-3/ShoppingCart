@@ -19,5 +19,5 @@ public class Payment {
     private Integer localId;
 
     private Integer userId;
-    private Integer credit;
+    private Double credit;
 }

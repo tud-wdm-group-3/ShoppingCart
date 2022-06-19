@@ -24,7 +24,7 @@ public class PaymentController {
     }
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
-    public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount) {
+    public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount) {
         System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         paymentService.makePayment(userId, orderId, amount, response);
@@ -56,7 +56,7 @@ public class PaymentController {
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}")
-    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
+    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount) {
         System.out.println("Adding " + amount + " to funds of user " + userId);
         return paymentService.addFunds(userId, amount);
     }
