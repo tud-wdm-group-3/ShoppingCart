@@ -87,7 +87,7 @@ public class StockWrapperController {
     }
 
     @PostMapping(path="/item/create/{price}")
-    public ResponseEntity addItem(@PathVariable(name="price") int price){
+    public ResponseEntity addItem(@PathVariable(name="price") double price){
         try{
             int partition = figureOutPartition(-1);
             System.out.println("In stockwrapper, requesting create item with price "+price+", calling partition "+partition);

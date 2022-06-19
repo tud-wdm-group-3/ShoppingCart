@@ -210,7 +210,7 @@ public class TransactionHandler {
         int userId = order.getUserId();
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
 
-        Map<String, Integer> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
+        Map<String, Object> reqValue = Map.of("userId", userId, "method", method, "totalCost", order.getTotalCost());
         kafkaTemplate.send("toPaymentOrderExists", partition, order.getOrderId(), reqValue);
     }
 
