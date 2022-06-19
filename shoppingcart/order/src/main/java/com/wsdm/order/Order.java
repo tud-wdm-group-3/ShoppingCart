@@ -47,14 +47,14 @@ public class Order {
 
     public Order(int userId)
     {
-        items = new ArrayList<>();
-        orderId = -1;
-        userId = userId;
-        totalCost = 0;
-        paid = false;
-        orderBroadcasted = OrderBroadcasted.NO;
-        inCheckout = false;
-        processedPaymentKeys = new HashSet<>();
-        replicaHandlingCheckout = "";
+        this.items = new ArrayList<>();
+        this.orderId = -1;
+        this.userId = userId;
+        this.totalCost = 0;
+        this.paid = false;
+        this.orderBroadcasted = OrderBroadcasted.NO;
+        this.inCheckout = false;
+        this.processedPaymentKeys = new HashSet<>();
+        this.replicaHandlingCheckout = "";
     }
 }
