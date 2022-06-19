@@ -1,8 +1,7 @@
 package com.wsdm.order;
 
-import com.wsdm.order.utils.NameUtils;
 import com.wsdm.order.utils.Partitioner;
-
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -61,7 +60,11 @@ public class TransactionHandler {
 
     public TransactionHandler(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
-        myReplicaId = NameUtils.getHostname();
+        try {
+            myReplicaId = InetAddress.getLocalHost().getHostName();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
 
         // Do the rollbacks for the failed orders.
         List<Order> failedOrders = orderRepository.findOrdersByInCheckoutAndReplicaHandlingCheckout(true, myReplicaId);
@@ -112,7 +115,7 @@ public class TransactionHandler {
     }
 
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockCheck",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockCheck",
                     partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void getStockCheckResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
@@ -165,7 +168,7 @@ public class TransactionHandler {
         kafkaTemplate.send("toPaymentTransaction", partition, order.getOrderId(), data);
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void getPaymentResponse(Map<String, Object> paymentResponse) {
         int orderId = (int) paymentResponse.get("orderId");
@@ -204,7 +207,7 @@ public class TransactionHandler {
         }
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "fromStockTransaction",
+    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void getStockTransactionResponse(Map<String, Object> stockResponse) {
         int orderId = (int) stockResponse.get("orderId");
