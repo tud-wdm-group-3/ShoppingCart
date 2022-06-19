@@ -42,9 +42,15 @@ public class OrderController {
     }
 
     @GetMapping(path = "/find/{orderId}")
-    public Optional<Order> find(@PathVariable(name="orderId") int orderId) {
+    public Object find(@PathVariable(name="orderId") int orderId) {
         System.out.println("Received find order request with orderId " + orderId);
-        return service.findOrder(orderId);
+        Optional<Order> optOrder = service.findOrder(orderId);
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            return Map.of("order_id", order.getOrderId(), "user_id", order.getUserId(), "items", order.getItems(), "paid", order.isPaid(), "total_cost", order.getTotalCost());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}")
