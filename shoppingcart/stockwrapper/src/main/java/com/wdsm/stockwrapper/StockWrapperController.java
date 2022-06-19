@@ -22,6 +22,11 @@ public class StockWrapperController {
     @Value("${partitions}")
     private int partitions;
 
+    @GetMapping(path="/")
+    public ResponseEntity health(){
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping(path="/find/{item_id}")
     public ResponseEntity findItem(@PathVariable(name="item_id") int item_id){
         try{

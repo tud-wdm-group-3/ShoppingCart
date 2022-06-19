@@ -19,6 +19,11 @@ public class OrderWrapperController {
     @Value("${partitions}")
     private int partitions;
 
+    @GetMapping(path="/")
+    public ResponseEntity health(){
+        return ResponseEntity.ok().build();
+    }
+
 
     //doesn't need partitioning
     @PostMapping(value="/create/{userId}")

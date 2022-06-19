@@ -22,6 +22,11 @@ public class PaymentWrapperController {
     @Value("${partitions}")
     private int partitions;
 
+    @GetMapping(path="/")
+    public ResponseEntity health(){
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}")
     public ResponseEntity pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Integer amount){
         try{
