@@ -26,7 +26,10 @@ public class PaymentService {
     @Value("${PARTITION}")
     private int myPaymentInstanceId;
 
-    private String myReplicaId;
+    private String myReplicaId = NameUtils.getHostname();
+    public String getMyReplicaId() {
+        return myReplicaId;
+    }
 
     private int numStockInstances = 2;
 
@@ -50,17 +53,6 @@ public class PaymentService {
     @Autowired
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
-
-        myReplicaId = NameUtils.getHostname();
-
-        // Let kafka be able to get the hostname
-        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
-        try {
-            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-
         System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
@@ -104,7 +96,7 @@ public class PaymentService {
         }
     }
 
-    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void paymentResponse(Map<String, Object> response) {
         String replicaId = (String) response.get("replicaId");
@@ -209,7 +201,7 @@ public class PaymentService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
-    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
@@ -226,7 +218,7 @@ public class PaymentService {
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
 
-    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
@@ -242,7 +234,7 @@ public class PaymentService {
      * Used to initialize cache of orderIds, so false relativeToCurrent.
      * @param request
      */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
     protected void receiveOrderExists(Map<String, Object> request) {
         System.out.println("Received order exists " + request);
@@ -263,6 +255,8 @@ public class PaymentService {
     }
 
     private boolean orderExists(int userId, int orderId) {
+        System.out.println("orderExists");
+        System.out.println(existingOrders);
         if (existingOrders.containsKey(userId)) {
             return existingOrders.get(userId).contains(orderId);
         }

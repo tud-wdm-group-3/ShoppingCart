@@ -1,5 +1,6 @@
 package com.wsdm.order;
 
+import com.wsdm.order.utils.ItemPrices;
 import com.wsdm.order.utils.NameUtils;
 import com.wsdm.order.utils.Partitioner;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,10 @@ public class OrderService {
     @Value("${PARTITION}")
     private int myOrderInstanceId;
 
-    private String myReplicaId;
+    private String myReplicaId = NameUtils.getHostname();
+    public String getMyReplicaId() {
+        return myReplicaId;
+    }
 
     private int numStockInstances = 2;
 
@@ -46,16 +50,7 @@ public class OrderService {
     @Autowired
     public OrderService(OrderRepository repository) {
         this.repository = repository;
-        myReplicaId = NameUtils.getHostname();
         System.out.println("Order service started with replica-id " + myReplicaId);
-
-        // Let kafka be able to get the hostname
-        StandardEvaluationContext standardEvaluationContext = new StandardEvaluationContext();
-        try {
-            standardEvaluationContext.registerFunction("getHostname", NameUtils.class.getDeclaredMethod("getHostname", null));
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
 
         List<Order> ordersNotBroadcasted = repository.findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted.YES);
         List<Order> ordersToSave = new ArrayList<>();
@@ -124,7 +119,7 @@ public class OrderService {
 
     public boolean addItemToOrder(int orderId, int itemId){
         // Check if itemId exists
-        if (!itemExists(itemId)) return false;
+        if (!ItemPrices.itemExists(itemId)) return false;
 
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
@@ -135,7 +130,7 @@ public class OrderService {
                 order.setItems(items);
 
                 // Increase order's total cost
-                int price = getItemPrice(itemId);
+                int price = ItemPrices.getItemPrice(itemId);
                 order.setTotalCost(order.getTotalCost() + price);
 
                 repository.save(order);
@@ -147,7 +142,7 @@ public class OrderService {
 
     public boolean removeItemFromOrder(int orderId,int itemId){
         // Check if itemId exists
-        if (!itemExists(itemId)) return false;
+        if (!ItemPrices.itemExists(itemId)) return false;
 
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
@@ -158,8 +153,9 @@ public class OrderService {
                     items.remove(itemId);
 
                     // Decrease order's total cost
-                    int price = getItemPrice(itemId);
+                    int price = ItemPrices.getItemPrice(itemId);
                     order.setTotalCost(order.getTotalCost() - price);
+                    order.setItems(items);
 
                     repository.save(order);
                     return true;
@@ -193,34 +189,20 @@ public class OrderService {
     @Autowired
     private KafkaTemplate<Integer, Object> kafkaTemplate;
 
-    /**
-     * Map itemdId to price.
-     */
-    private Map<Integer, Integer> itemPrices = new HashMap<>();
+
 
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
-    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
-            partitionOffsets = {@PartitionOffset(partition = "0", initialOffset = "0", relativeToCurrent = "false")}))
-    private void getItemPrice(Map<String, Integer> item) {
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
+    private void receiveItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         int price = item.get("price");
         System.out.println("Received item cache " + itemId + " with price " + price);
+        System.out.println(Thread.currentThread().getId());
 
-        if (this.itemPrices == null) {
-            System.out.println("map is null again");
-            this.itemPrices = new HashMap<>();
-        }
-        this.itemPrices.put(itemId, price);
-    }
-
-    public boolean itemExists(int itemId) {
-        return itemPrices.containsKey(itemId);
-    }
-
-    public int getItemPrice(int itemId) {
-        return itemPrices.get(itemId);
+        ItemPrices.addItemPrice(itemId, price);
     }
 
     /**
@@ -228,7 +210,7 @@ public class OrderService {
      * By putting them in the same topic, we have a total ordering between pay and cancel,
      * so we always process in the correct order.
      */
-    @KafkaListener(groupId = "#{getHostname()}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     private void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
