@@ -48,7 +48,7 @@ public class OrderWrapperController {
     }
 
     //needs partitioning
-    @DeleteMapping("/remove/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @DeleteMapping(value="/remove/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
         try{
             int partition=figureOutPartition(orderId);
