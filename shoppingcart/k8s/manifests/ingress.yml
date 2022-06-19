@@ -12,18 +12,18 @@ spec:
               service:
                 name: orderwrapper
                 port:
-                  number: 8080
+                  number: 80
           - path: /stock/
             pathType: Prefix
             backend:
               service:
                 name: stockwrapper
                 port:
-                  number: 8080
+                  number: 80
           - path: /payment/
             pathType: Prefix
             backend:
               service:
                 name: paymentwrapper
                 port:
-                  number: 8080
+                  number: 80

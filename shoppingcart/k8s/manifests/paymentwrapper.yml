@@ -7,9 +7,9 @@ spec:
   selector:
     component: paymentwrapper
   ports:
-    - port: 8080
+    - port: 80
       name: http
-      targetPort: 8080
+      targetPort: 80
 
 ---
 
@@ -32,9 +32,17 @@ spec:
           image: docker.io/ngavalas/paymentwrapper:latest
           env:
             - name: SERVICE_PORT
-              value: "8080"
+              value: "80"
           imagePullPolicy: Always
           command: ["java"]
           args: ["-jar", "/srv/paymentwrapper/target/paymentwrapper-1.0-SNAPSHOT.jar"]
           ports:
-            - containerPort: 8080
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /payment
+              port: 80
+          livenessProbe:
+            httpGet:
+              path: /payment
+              port: 80

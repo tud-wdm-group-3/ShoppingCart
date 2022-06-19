@@ -20,6 +20,8 @@ start() {
   helm install -f "${CLUSTER}/helm/postgres.yml" stock-db-0   "${postgres}"
   helm install -f "${CLUSTER}/helm/postgres.yml" stock-db-1   "${postgres}"
 
+  [[ "${CLUSTER}" == 'k8s' ]] && echo "waiting 1 min for kafka and dbs..." && sleep 60
+
   kubectl apply -f "${CLUSTER}/manifests/ingress.yml"
 
   kubectl apply -f "${CLUSTER}/manifests/orderwrapper.yml"
