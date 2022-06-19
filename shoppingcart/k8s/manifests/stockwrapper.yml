@@ -40,9 +40,9 @@ spec:
             - containerPort: 80
           readinessProbe:
             httpGet:
-              path: /stock
+              path: /stock/health
               port: 80
           livenessProbe:
             httpGet:
-              path: /stock
+              path: /stock/health
               port: 80

@@ -40,9 +40,9 @@ spec:
             - containerPort: 80
           readinessProbe:
             httpGet:
-              path: /payment
+              path: /payment/health
               port: 80
           livenessProbe:
             httpGet:
-              path: /payment
+              path: /payment/health
               port: 80

@@ -38,9 +38,9 @@ spec:
             - containerPort: 80
           readinessProbe:
             httpGet:
-              path: /orders
+              path: /orders/health
               port: 80
           livenessProbe:
             httpGet:
-              path: /orders
+              path: /orders/health
               port: 80

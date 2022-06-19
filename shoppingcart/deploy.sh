@@ -31,6 +31,8 @@ start() {
   kubectl apply -f "${CLUSTER}/manifests/order.yml"
   kubectl apply -f "${CLUSTER}/manifests/payment.yml"
   kubectl apply -f "${CLUSTER}/manifests/stock.yml"
+
+  [[ "${CLUSTER}" == 'minikube' ]] && echo "cluster endpoint: $(minikube ip)"
 }
 
 stop() {
