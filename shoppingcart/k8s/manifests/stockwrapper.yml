@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stockwrapper
+spec:
+  type: NodePort
+  selector:
+    component: stockwrapper
+  ports:
+    - port: 80
+      name: http
+      targetPort: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stockwrapper
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: stockwrapper
+  template:
+    metadata:
+      labels:
+        component: stockwrapper
+    spec:
+      containers:
+        - name: stockwrapper
+          image: docker.io/ngavalas/stockwrapper:latest
+          env:
+            - name: SERVICE_PORT
+              value: "80"
+          imagePullPolicy: Always
+          command: ["java"]
+          args: ["-jar", "/srv/stockwrapper/target/stockwrapper-1.0-SNAPSHOT.jar"]
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /stock/health
+              port: 80
+          livenessProbe:
+            httpGet:
+              path: /stock/health
+              port: 80

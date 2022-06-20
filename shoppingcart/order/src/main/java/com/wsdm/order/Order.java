@@ -27,7 +27,7 @@ public class Order {
     @ElementCollection(fetch = FetchType.EAGER)
     private List<Integer> items;
     private int userId;
-    private int totalCost;
+    private double totalCost;
     private boolean paid;
 
     enum OrderBroadcasted {
@@ -50,7 +50,7 @@ public class Order {
         this.items = new ArrayList<>();
         this.orderId = -1;
         this.userId = userId;
-        this.totalCost = 0;
+        this.totalCost = 0.0;
         this.paid = false;
         this.orderBroadcasted = OrderBroadcasted.NO;
         this.inCheckout = false;

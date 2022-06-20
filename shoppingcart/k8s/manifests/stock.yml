@@ -12,7 +12,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: stock-0
 spec:
@@ -20,6 +20,7 @@ spec:
   selector:
     matchLabels:
       component: stock-0
+  serviceName: "stock-0"
   template:
     metadata:
       labels:
@@ -27,7 +28,7 @@ spec:
     spec:
       containers:
         - name: stock-0
-          image: stock:latest
+          image: docker.io/ngavalas/stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -36,17 +37,14 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: stock-0-db-postgresql-ha-pgpool
+              value: stock-db-0-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "0"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]
           ports:
@@ -66,7 +64,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: stock-1
 spec:
@@ -74,6 +72,7 @@ spec:
   selector:
     matchLabels:
       component: stock-1
+  serviceName: "stock-1"
   template:
     metadata:
       labels:
@@ -81,7 +80,7 @@ spec:
     spec:
       containers:
         - name: stock-1
-          image: stock:latest
+          image: docker.io/ngavalas/stock:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -90,17 +89,14 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: stock-1-db-postgresql-ha-pgpool
+              value: stock-db-1-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "1"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/stock/target/stock-1.0-SNAPSHOT.jar"]
           ports:

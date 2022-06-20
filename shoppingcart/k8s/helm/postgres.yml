@@ -11,4 +11,4 @@ pgpool:
 postgresql:
   replicaCount: 2
 persistence:
-  size: 128Mi
+  size: 4Gi

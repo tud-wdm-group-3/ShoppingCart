@@ -46,7 +46,7 @@ public class StockService {
         return stockRepository.findAll();
     }
 
-    public int createItem(int price) {
+    public int createItem(double price) {
         Stock stock = new Stock(price);
 
         // Convert local to global id
@@ -54,7 +54,7 @@ public class StockService {
         int globalId = stock.getLocalId() * numOrderInstances + myStockInstanceId;
 
         // Update item logs in order instances
-        Map<String, Integer> data = Map.of("itemId", globalId, "price", stock.getPrice());
+        Map<String, Object> data = Map.of("itemId", globalId, "price", stock.getPrice());
         fromStockTemplate.send("fromStockItemPrice", 0, data);
 
         stock.setItemId(globalId);

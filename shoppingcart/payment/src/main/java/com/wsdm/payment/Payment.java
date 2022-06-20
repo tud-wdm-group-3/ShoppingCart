@@ -23,7 +23,7 @@ public class Payment {
     private Integer localId;
 
     private Integer userId;
-    private Integer credit = 0;
+    private Double credit = 0.0;
 
     @ElementCollection
     private Set<Integer> processedPaymentKeys = new HashSet<>();

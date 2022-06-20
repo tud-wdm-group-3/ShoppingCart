@@ -12,7 +12,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: payment-0
 spec:
@@ -20,6 +20,7 @@ spec:
   selector:
     matchLabels:
       component: payment-0
+  serviceName: "payment-0"
   template:
     metadata:
       labels:
@@ -43,9 +44,7 @@ spec:
               value: kafka
             - name: PARTITION_ID
               value: "0"
-            - name: EUREKA_SERVICE_URL
-              value: "http://eureka:8761/eureka"
-          imagePullPolicy: Never #Always
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "500Mi"
@@ -72,7 +71,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: payment-1
 spec:
@@ -80,6 +79,7 @@ spec:
   selector:
     matchLabels:
       component: payment-1
+  serviceName: "payment-1"
   template:
     metadata:
       labels:
@@ -103,9 +103,7 @@ spec:
               value: kafka
             - name: PARTITION_ID
               value: "1"
-            - name: EUREKA_SERVICE_URL
-              value: "http://eureka:8761/eureka"
-          imagePullPolicy: Never #Always
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "500Mi"

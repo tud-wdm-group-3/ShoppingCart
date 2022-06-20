@@ -22,7 +22,7 @@ public class Stock {
 
     private Integer itemId;
     private Integer amount;
-    private Integer price;
+    private Double price;
 
     enum StockBroadcasted {
         NO,

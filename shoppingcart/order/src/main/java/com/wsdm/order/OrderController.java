@@ -2,11 +2,8 @@ package com.wsdm.order;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
 
@@ -19,19 +16,19 @@ public class OrderController {
     @Autowired
     OrderService service;
 
-    @GetMapping(path = "/dump")
+    @GetMapping(path = "/dump", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Order> dump() {
         return service.dump();
     }
     
-    @PostMapping(path = "/create/{userId}")
+    @PostMapping(path = "/create/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Integer> create(@PathVariable(name="userId") int userId) {
         int orderId = service.createOrder(userId);
         System.out.println("Received create order request with userId " + userId + " new order " + orderId);
         return Map.of("order_id", orderId);
     }
 
-    @DeleteMapping(path = "/remove/{orderId}")
+    @DeleteMapping(path = "/remove/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
         System.out.println("Received remove order request with orderId " + orderId);
         boolean completed = service.deleteOrder(orderId);
@@ -41,7 +38,7 @@ public class OrderController {
             return ResponseEntity.ok().build();
     }
 
-    @GetMapping(path = "/find/{orderId}")
+    @GetMapping(path = "/find/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object find(@PathVariable(name="orderId") int orderId) {
         System.out.println("Received find order request with orderId " + orderId);
         Optional<Order> optOrder = service.findOrder(orderId);
@@ -53,7 +50,7 @@ public class OrderController {
         }
     }
 
-    @PostMapping(path = "/addItem/{orderId}/{itemId}")
+    @PostMapping(path = "/addItem/{orderId}/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity addItem(@PathVariable(name="orderId") int orderId,
                        @PathVariable(name="itemId") int itemId) {
         System.out.println("Add item " + itemId + " to orderId " + orderId);
@@ -65,7 +62,7 @@ public class OrderController {
         return response;
     }
 
-    @DeleteMapping(path = "/removeItem/{orderId}/{itemId}")
+    @DeleteMapping(path = "/removeItem/{orderId}/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity removeItem(@PathVariable(name="orderId") int orderId,
                         @PathVariable(name="itemId") int itemId) {
         System.out.println("Remove item " + itemId + " to orderId " + orderId);
@@ -77,7 +74,7 @@ public class OrderController {
         return response;
     }
 
-    @PostMapping(path = "/checkout/{orderId}")
+    @PostMapping(path = "/checkout/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
         System.out.println("Checkout order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();

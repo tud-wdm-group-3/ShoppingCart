@@ -56,7 +56,7 @@ public class PaymentService {
         return paymentRepository.findAll();
     }
 
-    public void changePayment(Integer userId, Integer orderId, Integer amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
+    public void changePayment(Integer userId, Integer orderId, Double amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
         if (!ExistingOrders.orderExists(userId, orderId)) {
             response.setResult(ResponseEntity.notFound().build());
             return;
@@ -67,6 +67,7 @@ public class PaymentService {
             return;
         }
         Payment payment = optPaymentUser.get();
+
 
         if ((!cancellation && isPaid(payment, orderId)) || (cancellation && !isPaid(payment, orderId))) {
             response.setResult(ResponseEntity.notFound().build());
@@ -185,7 +186,7 @@ public class PaymentService {
         return paymentRepository.findById(localId);
     }
 
-    public boolean addFunds(Integer userId, Integer amount) {
+    public boolean addFunds(Integer userId, Double amount) {
         if (amount <= 0) {
             return false;
         }
@@ -212,7 +213,6 @@ public class PaymentService {
 
         Payment payment = getPaymentWithError(userId);
         boolean paid = pay(payment, orderId, cost);
-
         int partition = orderId % numOrderInstances;
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", paid);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
@@ -224,7 +224,8 @@ public class PaymentService {
         System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
-        int refund = (int) request.get("refund");
+
+        double refund = (double) request.get("refund");
         Payment payment = getPaymentWithError(userId);
 
         cancel(payment, orderId, refund);

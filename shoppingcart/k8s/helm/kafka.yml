@@ -1,8 +1,12 @@
-zookeeper:
-  enabled: false
-replicaCount: 3
+replicaCount: 2
+numPartitions: 2
+defaultReplicationFactor: 2
+autoCreateTopicsEnable: true
+
 persistence:
-  size: 128Mi
-externalZookeeper:
-  servers:
-    myzookeeper
+  size: 4Gi
+
+zookeeper:
+  persistence:
+    size: 4Gi
+  replicaCount: 3

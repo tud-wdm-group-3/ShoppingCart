@@ -135,7 +135,7 @@ public class OrderService {
                 order.setItems(items);
 
                 // Increase order's total cost
-                int price = ItemPrices.getItemPrice(itemId);
+                double price = ItemPrices.getItemPrice(itemId);
                 order.setTotalCost(order.getTotalCost() + price);
 
                 repository.save(order);
@@ -158,7 +158,7 @@ public class OrderService {
                     items.remove(Integer.valueOf(itemId));
 
                     // Decrease order's total cost
-                    int price = ItemPrices.getItemPrice(itemId);
+                    double price = ItemPrices.getItemPrice(itemId);
                     order.setTotalCost(order.getTotalCost() - price);
                     order.setItems(items);
 
@@ -191,6 +191,7 @@ public class OrderService {
      * Item cost and payment functions below. Needed here because need functionality of service
      */
 
+
     /**
      * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
@@ -198,7 +199,7 @@ public class OrderService {
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
     private void receiveItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
-        int price = item.get("price");
+        double price = item.get("price");
         System.out.println("Received item cache " + itemId + " with price " + price);
 
         ItemPrices.addItemPrice(itemId, price);
@@ -224,7 +225,7 @@ public class OrderService {
         Optional<Order> optOrder = findOrder(orderId);
 
         if (!optOrder.isPresent()) {
-            throw new AssertionError("Payment made for unexisting order");
+            throw new AssertionError("Payment made for non-existent order");
         }
 
         Order order = optOrder.get();

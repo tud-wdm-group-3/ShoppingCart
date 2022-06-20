@@ -12,7 +12,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: payment-0
 spec:
@@ -20,6 +20,7 @@ spec:
   selector:
     matchLabels:
       component: payment-0
+  serviceName: "payment-0"
   template:
     metadata:
       labels:
@@ -27,7 +28,7 @@ spec:
     spec:
       containers:
         - name: payment-0
-          image: payment:latest
+          image: docker.io/ngavalas/payment:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -36,17 +37,14 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: payment-0-db-postgresql-ha-pgpool
+              value: payment-db-0-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "0"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/payment/target/payment-1.0-SNAPSHOT.jar"]
           ports:
@@ -66,7 +64,7 @@ spec:
       targetPort: 8080
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: payment-1
 spec:
@@ -74,6 +72,7 @@ spec:
   selector:
     matchLabels:
       component: payment-1
+  serviceName: "payment-1"
   template:
     metadata:
       labels:
@@ -81,7 +80,7 @@ spec:
     spec:
       containers:
         - name: payment-1
-          image: payment:latest
+          image: docker.io/ngavalas/payment:latest
           env:
             - name: POSTGRES_USER
               value: pguser
@@ -90,17 +89,14 @@ spec:
             - name: POSTGRES_DB
               value: pgdb
             - name: POSTGRES_HOST
-              value: payment-1-db-postgresql-ha-pgpool
+              value: payment-db-1-postgresql-ha-pgpool
             - name: SERVICE_PORT
               value: "8080"
+            - name: KAFKA_SERVERS_CSL
+              value: kafka
+            - name: PARTITION_ID
+              value: "1"
           imagePullPolicy: Always
-          resources:
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-            requests:
-              memory: "1Gi"
-              cpu: "1"
           command: ["java"]
           args: ["-jar", "/srv/payment/target/payment-1.0-SNAPSHOT.jar"]
           ports:

@@ -20,6 +20,8 @@ start() {
   helm install -f "${CLUSTER}/helm/postgres.yml" stock-db-0   "${postgres}"
   helm install -f "${CLUSTER}/helm/postgres.yml" stock-db-1   "${postgres}"
 
+  [[ "${CLUSTER}" == 'k8s' ]] && echo "waiting 1 min for kafka and dbs..." && sleep 60
+
   kubectl apply -f "${CLUSTER}/manifests/ingress.yml"
 
   kubectl apply -f "${CLUSTER}/manifests/orderwrapper.yml"
@@ -29,6 +31,8 @@ start() {
   kubectl apply -f "${CLUSTER}/manifests/order.yml"
   kubectl apply -f "${CLUSTER}/manifests/payment.yml"
   kubectl apply -f "${CLUSTER}/manifests/stock.yml"
+
+  [[ "${CLUSTER}" == 'minikube' ]] && echo "cluster endpoint: $(minikube ip)"
 }
 
 stop() {

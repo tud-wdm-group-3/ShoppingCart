@@ -1,4 +1,4 @@
 package com.wsdm.payment;
 
-public record PaymentRegistrationRequest(Integer credit) {
+public record PaymentRegistrationRequest(Double credit) {
 }
