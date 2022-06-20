@@ -21,7 +21,6 @@ import java.net.InetAddress;
 import java.util.*;
 
 @Service
-@Transactional(isolation = Isolation.SERIALIZABLE)
 public class PaymentService {
 
     @Value("${PARTITION}")
@@ -56,6 +55,7 @@ public class PaymentService {
         return paymentRepository.findAll();
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public void changePayment(Integer userId, Integer orderId, Double amount, DeferredResult<ResponseEntity> response, boolean cancellation) {
         if (!ExistingOrders.orderExists(userId, orderId)) {
             response.setResult(ResponseEntity.notFound().build());
@@ -255,6 +255,7 @@ public class PaymentService {
         return payment.getOrderIdToPaidAmount().containsKey(orderId);
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     private boolean pay(Payment payment, int orderId, double cost) {
         double credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;

@@ -20,7 +20,6 @@ import java.net.InetAddress;
 import java.util.*;
 
 @Service
-@Transactional(isolation = Isolation.SERIALIZABLE)
 public class TransactionHandler {
 
     @Value("${PARTITION}")

@@ -27,7 +27,6 @@ import java.util.concurrent.Future;
 
 
 @Service
-@Transactional(isolation = Isolation.SERIALIZABLE)
 public class OrderService {
     @Value("${PARTITION}")
     private int myOrderInstanceId;
@@ -91,6 +90,7 @@ public class OrderService {
         return globalId;
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean deleteOrder(int orderId){
         Optional<Order> optOrder = findOrder(orderId);
         if (optOrder.isPresent()) {
@@ -122,6 +122,7 @@ public class OrderService {
         return optOrder;
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean addItemToOrder(int orderId, int itemId){
         // Check if itemId exists
         if (!ItemPrices.itemExists(itemId)) return false;
@@ -145,6 +146,7 @@ public class OrderService {
         return false;
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean removeItemFromOrder(int orderId,int itemId){
         // Check if itemId exists
         if (!ItemPrices.itemExists(itemId)) return false;
@@ -170,6 +172,7 @@ public class OrderService {
         return false;
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public void checkout(int orderId, DeferredResult<ResponseEntity> response){
         Optional<Order> optOrder = findOrder(orderId);
         if (!optOrder.isPresent()) {
@@ -210,9 +213,10 @@ public class OrderService {
      * By putting them in the same topic, we have a total ordering between pay and cancel,
      * so we always process in the correct order.
      */
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
-    private void paymentChanged(Map<String, Object> request) {
+    public void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
         int amount = (int) request.get("amount");
