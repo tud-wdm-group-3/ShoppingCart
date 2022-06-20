@@ -18,7 +18,7 @@ public class OrderController {
 
     @GetMapping(path = "/dump", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Order> dump() {
-        return service.repository.findAll();
+        return service.dump();
     }
     
     @PostMapping(path = "/create/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -39,9 +39,15 @@ public class OrderController {
     }
 
     @GetMapping(path = "/find/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Optional<Order> find(@PathVariable(name="orderId") int orderId) {
+    public Object find(@PathVariable(name="orderId") int orderId) {
         System.out.println("Received find order request with orderId " + orderId);
-        return service.findOrder(orderId);
+        Optional<Order> optOrder = service.findOrder(orderId);
+        if (optOrder.isPresent()) {
+            Order order = optOrder.get();
+            return Map.of("order_id", order.getOrderId(), "user_id", order.getUserId(), "items", order.getItems(), "paid", order.isPaid(), "total_cost", order.getTotalCost());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping(path = "/addItem/{orderId}/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -71,13 +77,8 @@ public class OrderController {
     @PostMapping(path = "/checkout/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> checkout(@PathVariable(name="orderId") int orderId) {
         System.out.println("Checkout order " + orderId);
-        Optional<Order> order = service.findOrder(orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        if (!order.isPresent()) {
-            response.setResult(ResponseEntity.notFound().build());
-        } else {
-            service.checkout(order.get(), response);
-        }
+        service.checkout(orderId, response);
         return response;
     }
 }

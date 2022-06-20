@@ -21,26 +21,25 @@ public class PaymentController {
 
     @GetMapping(path = "/dump")
     public List<Payment> dump() {
-        return paymentService.paymentRepository.findAll();
+        return paymentService.dump();
     }
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount) {
         System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        paymentService.makePayment(userId, orderId, amount, response);
+        paymentService.changePayment(userId, orderId, amount, response, false);
 
         return response;
     }
 
+
     @PostMapping(path="cancel/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
+    public DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         System.out.println("Received cancel from user " + userId + " for order " + orderId);
-        boolean completed = paymentService.cancelPayment(userId, orderId);
-        if (!completed) {
-            ResponseEntity.badRequest().build();
-        }
-        return ResponseEntity.ok().build();
+        DeferredResult<ResponseEntity> response = new DeferredResult<>();
+        paymentService.changePayment(userId, orderId, -1, response, true);
+        return response;
     }
 
     @GetMapping(path="status/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -57,14 +56,20 @@ public class PaymentController {
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public boolean addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount) {
+    public Map<String, Boolean> addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
         System.out.println("Adding " + amount + " to funds of user " + userId);
-        return paymentService.addFunds(userId, amount);
+        return Map.of("done", paymentService.addFunds(userId, amount));
     }
 
     @GetMapping(path="find_user/{user_id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Optional<Payment> findUser(@PathVariable("user_id") Integer userId) {
+    public Object findUser(@PathVariable("user_id") Integer userId) {
         System.out.println("Finding user " + userId);
-        return paymentService.findUser(userId);
+        Optional<Payment> optPayment = paymentService.findUser(userId);
+        if (optPayment.isPresent()) {
+            Payment payment = optPayment.get();
+            return Map.of("user_id", payment.getUserId(), "credit", payment.getCredit());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

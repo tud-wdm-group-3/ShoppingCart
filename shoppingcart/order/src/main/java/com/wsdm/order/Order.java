@@ -7,7 +7,9 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "Orders")
@@ -22,19 +24,37 @@ public class Order {
 
     private int orderId;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<Integer> items;
     private int userId;
     private double totalCost;
     private boolean paid;
+
+    enum OrderBroadcasted {
+        NO,
+        YES,
+        PROCESSING_DELETION,
+        DELETED
+    }
+    private OrderBroadcasted orderBroadcasted;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<Integer> processedPaymentKeys;
+
     private boolean inCheckout;
+    private boolean checkedOut;
+    private String replicaHandlingCheckout;
 
     public Order(int userId)
     {
-        items = new ArrayList<>();
-        userId = userId;
-        totalCost = 0.0;
-        paid = false;
-        inCheckout = false;
+        this.items = new ArrayList<>();
+        this.orderId = -1;
+        this.userId = userId;
+        this.totalCost = 0.0;
+        this.paid = false;
+        this.orderBroadcasted = OrderBroadcasted.NO;
+        this.inCheckout = false;
+        this.processedPaymentKeys = new HashSet<>();
+        this.replicaHandlingCheckout = "";
     }
 }

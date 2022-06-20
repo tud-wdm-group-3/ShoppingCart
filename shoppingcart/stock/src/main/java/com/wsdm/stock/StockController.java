@@ -14,7 +14,7 @@ public record StockController(StockService stockService) {
 
     @GetMapping(path = "/dump")
     public List<Stock> dump() {
-        return stockService.stockRepository.findAll();
+        return stockService.dump();
     }
 
     @GetMapping(path="/find/{item_id}", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -6,6 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 @Data
 @Builder
@@ -19,5 +23,17 @@ public class Payment {
     private Integer localId;
 
     private Integer userId;
-    private Double credit;
+    private Double credit = 0.0;
+
+    @ElementCollection
+    private Set<Integer> processedPaymentKeys = new HashSet<>();
+
+    /**
+     * Information on how much is paid.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @MapKeyColumn(name="name")
+    @Column(name="value")
+    @CollectionTable(name="orderIdToPaidAmount")
+    private Map<Integer, Integer> orderIdToPaidAmount = new HashMap<>();
 }

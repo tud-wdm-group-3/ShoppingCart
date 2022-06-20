@@ -1,57 +1,80 @@
 package com.wsdm.stock;
 
+import com.wsdm.stock.utils.NameUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
 @Service
+@Transactional(isolation = Isolation.SERIALIZABLE)
 public class StockService {
 
     final StockRepository stockRepository;
 
-    @Value("${PARTITION_ID}")
+    @Value("${PARTITION}")
     private int myStockInstanceId;
 
-    private int numStockInstances = 2;
+    private String myReplicaId = NameUtils.getHostname();
+    public String getMyReplicaId() {
+        return myReplicaId;
+    }
 
-    private int numPaymentInstances = 2;
+    private static int numStockInstances = 2;
 
-    private int numOrderInstances = 2;
+    private static int numPaymentInstances = 2;
+
+    private static int numOrderInstances = 2;
 
     @Autowired
     public StockService(StockRepository stockRepository) {
         this.stockRepository = stockRepository;
+
+        System.out.println("Stock service started with replica-id " + myReplicaId);
+    }
+
+    public List<Stock> dump() {
+        return stockRepository.findAll();
     }
 
     public int createItem(double price) {
         Stock stock = new Stock(price);
-        stock.setPrice(price);
 
         // Convert local to global id
         stockRepository.save(stock);
         int globalId = stock.getLocalId() * numOrderInstances + myStockInstanceId;
-        stock.setItemId(globalId);
-        stockRepository.save(stock);
 
         // Update item logs in order instances
         Map<String, Object> data = Map.of("itemId", globalId, "price", stock.getPrice());
-        for (int partition = 0; partition < numOrderInstances; partition++) {
-            fromStockTemplate.send("fromStockItemPrice", partition, data);
-        }
+        fromStockTemplate.send("fromStockItemPrice", 0, data);
+
+        stock.setItemId(globalId);
+        stock.setStockBroadcasted(Stock.StockBroadcasted.YES);
+        stockRepository.save(stock);
 
         return globalId;
     }
 
     public Optional<Stock> findItem(int itemId) {
         int localId = (itemId - myStockInstanceId) / numStockInstances;
-        return stockRepository.findById(localId);
+        Optional<Stock> optStock = stockRepository.findById(localId);
+        if (optStock.isPresent()) {
+            Stock order = optStock.get();
+            if (order.getStockBroadcasted() == Stock.StockBroadcasted.NO) {
+                // do not return unbroadcasted orders
+                optStock = Optional.empty();
+            }
+        }
+        return optStock;
     }
 
     public List<Stock> findItems(List<Integer> itemIds) {
@@ -95,15 +118,15 @@ public class StockService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockCheck",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockCheck(ConsumerRecord<Integer, List<Integer>> request) {
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockCheck",
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+    protected void getStockCheck(Map<String, Object> request) {
         System.out.println("Received stock check " + request);
-        int orderId = request.key();
+        int orderId = (int) request.get("orderId");
         int partition = orderId % numOrderInstances;
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
         List<Stock> stocks = findItems(ids);
 
@@ -124,56 +147,60 @@ public class StockService {
         fromStockTemplate.send("fromStockCheck", partition, orderId, data);
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockTransaction(ConsumerRecord<Integer, List<Integer>> request) {
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+    protected void getStockTransaction(Map<String, Object> request) {
         System.out.println("Received stock transaction " + request);
-        int orderId = request.key();
+        int orderId = (int) request.get("orderId");
         int orderPartition = orderId % numOrderInstances;
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findItems(ids);
 
-        // subtract amounts from stock
-        int curId = -1;
-        for (int id : ids) {
-            int required = itemIdToAmount.get(id);
-            // For rollbacks in case individual item no longer available
-            if (!subtractStock(id, required)) {
-                curId = id;
-                break;
-            }
+        boolean enoughInStock = true;
+        for (Stock stock : stocks) {
+            enoughInStock = enoughInStock && stock.getAmount() >= itemIdToAmount.get(stock.getItemId());
+            assert(!stock.getOrderToItemsProcessed().containsKey(orderId));
         }
 
-        // Internal rollback
-        if (curId != -1){
-            for (int id : ids){
-                if (id == curId) break;
-                int required = itemIdToAmount.get(id);
-                addStock(id, required);
+        if (enoughInStock) {
+            for (Stock stock : stocks) {
+                int amount = itemIdToAmount.get(stock.getItemId());
+                stock.setAmount(stock.getAmount() - amount);
+                Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
+                orderToItemsProcessed.put(orderId, amount);
             }
+            stockRepository.saveAll(stocks);
         }
 
-        boolean enoughInStock = curId == -1;
         Map<String, Object> data = Map.of("orderId", orderId, "stockId", myStockInstanceId, "enoughInStock", enoughInStock);
         fromStockTemplate.send("fromStockTransaction", orderPartition, orderId, data);
     }
 
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "toStockRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION_ID}", initialOffset = "0", relativeToCurrent = "true")}))
-    protected void getStockRollback(ConsumerRecord<Integer, List<Integer>> request) {
+    @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockRollback",
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+    protected void getStockRollback(Map<String, Object> request) {
         System.out.println("Received stock rollback " + request);
+        int orderId = (int) request.get("orderId");
 
         // Count items
-        Map<Integer, Integer> itemIdToAmount = countItems(request.value());
+        Map<Integer, Integer> itemIdToAmount = countItems((List<Integer>) request.get("items"));
         List<Integer> ids = new ArrayList<>(itemIdToAmount.keySet());
+        List<Stock> stocks = findItems(ids);
 
         // Rollback amounts to stock
-        for (int id : ids) {
-            int returned = itemIdToAmount.get(id);
-            addStock(id, returned);
+        for (Stock stock : stocks) {
+            int amount = itemIdToAmount.get(stock.getItemId());
+            Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
+            if (orderToItemsProcessed.containsKey(orderId)) {
+                assert(amount == orderToItemsProcessed.get(orderId));
+                orderToItemsProcessed.remove(orderId);
+                stock.setAmount(stock.getAmount() + amount);
+            }
         }
+        stockRepository.saveAll(stocks);
     }
 
     private Map<Integer, Integer> countItems(List<Integer> items) {
