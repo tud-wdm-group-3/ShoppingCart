@@ -2,6 +2,7 @@ package com.wsdm.payment;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -18,6 +19,11 @@ public class PaymentController {
 
     @Autowired
     PaymentService paymentService;
+
+    @Value("${PARTITION}")
+    private int myPaymentInstanceId;
+
+    private static int numPaymentInstances = 2;
 
     @GetMapping(path = "/dump")
     public List<Payment> dump() {
@@ -67,7 +73,7 @@ public class PaymentController {
         Optional<Payment> optPayment = paymentService.findUser(userId);
         if (optPayment.isPresent()) {
             Payment payment = optPayment.get();
-            return Map.of("user_id", payment.getUserId(), "credit", payment.getCredit());
+            return Map.of("user_id", payment.getUserId(numPaymentInstances, myPaymentInstanceId), "credit", payment.getCredit());
         } else {
             return ResponseEntity.notFound().build();
         }

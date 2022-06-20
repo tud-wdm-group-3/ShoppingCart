@@ -35,4 +35,8 @@ public class Payment {
     @Column(name="value")
     @CollectionTable(name="orderIdToPaidAmount")
     private Map<Integer, Double> orderIdToPaidAmount = new HashMap<>();
+
+    public int getUserId(int numPaymentInstances, int myPaymentInstanceId) {
+        return this.getLocalId() * numPaymentInstances + myPaymentInstanceId;
+    }
 }
