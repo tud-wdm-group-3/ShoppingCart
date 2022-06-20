@@ -93,7 +93,7 @@ public class StockService {
         return false;
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    
     public boolean subtractStock(int itemId, int amount) {
         Optional<Stock> res = findItem(itemId);
         if(res.isPresent()) {
@@ -114,7 +114,7 @@ public class StockService {
     @Autowired
     private KafkaTemplate<Integer, Object> fromStockTemplate;
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockCheck",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getStockCheck(Map<String, Object> request) {
@@ -144,7 +144,7 @@ public class StockService {
         fromStockTemplate.send("fromStockCheck", partition, orderId, data);
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toStockTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getStockTransaction(Map<String, Object> request) {
