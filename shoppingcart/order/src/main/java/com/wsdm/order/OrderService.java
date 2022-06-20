@@ -199,7 +199,7 @@ public class OrderService {
      * Used to initialize cache of itemIds, so false relativeToCurrent, and partition 0.
      */
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "false")}))
     private void receiveItemPrice(Map<String, Integer> item) {
         int itemId = item.get("itemId");
         double price = item.get("price");
@@ -215,7 +215,7 @@ public class OrderService {
      */
     @Transactional(isolation = Isolation.SERIALIZABLE)
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentPaid",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
@@ -241,11 +241,9 @@ public class OrderService {
 
         if (type.contains("pay")) {
             if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-                System.out.println("respond true");
                 respondToPaymentChange(orderId, userId, true, "pay", replicaId, paymentKey, -1);
                 setPaid(order, true, paymentKey);
             } else {
-                System.out.println("respond false");
                 respondToPaymentChange(orderId, userId, false, "pay", replicaId, paymentKey, amount);
             }
         } else if (type.contains("cancel")) {

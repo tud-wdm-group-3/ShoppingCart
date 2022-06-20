@@ -94,7 +94,7 @@ public class PaymentService {
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentResponse",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     public void paymentResponse(Map<String, Object> response) {
         String replicaId = (String) response.get("replicaId");
         int orderId = (int) response.get("orderId");
@@ -140,10 +140,8 @@ public class PaymentService {
     private void respondToUser(int orderId, boolean ok) {
         if (pendingPaymentResponses.containsKey(orderId)) {
             if (ok) {
-                System.out.println("ok!!");
                 pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.ok().build());
             } else {
-                System.out.println("not ok!!");
                 pendingPaymentResponses.remove(orderId).setResult(ResponseEntity.badRequest().build());
             }
         }
@@ -204,7 +202,7 @@ public class PaymentService {
     private KafkaTemplate<Integer, Object> fromPaymentTemplate;
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
         System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
@@ -219,7 +217,7 @@ public class PaymentService {
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "true")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
         System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
@@ -236,7 +234,7 @@ public class PaymentService {
      * @param request
      */
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
-            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "0", relativeToCurrent = "false")}))
+            partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "false")}))
     protected void receiveOrderExists(Map<String, Object> request) {
         System.out.println("Received order exists " + request);
         int orderId = (int) request.get("orderId");
@@ -256,13 +254,12 @@ public class PaymentService {
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
-    private boolean pay(Payment payment, int orderId, double cost) {
+    public boolean pay(Payment payment, int orderId, double cost) {
         double credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
         if (enoughCredit) {
             if (!isPaid(payment, orderId)) {
                 Map<Integer, Double> orderIdToPaid = payment.getOrderIdToPaidAmount();
-                System.out.println(orderIdToPaid);
                 orderIdToPaid.put(orderId, cost);
                 payment.setOrderIdToPaidAmount(orderIdToPaid);
                 payment.setCredit(credit - cost);
