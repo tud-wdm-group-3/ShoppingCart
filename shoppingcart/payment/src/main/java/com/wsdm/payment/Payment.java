@@ -22,7 +22,6 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer localId;
 
-    private Integer userId;
     private Double credit = 0.0;
 
     @ElementCollection

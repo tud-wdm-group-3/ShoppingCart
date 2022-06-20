@@ -2,6 +2,7 @@ package com.wsdm.order;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,11 @@ import java.util.*;
 @RestController
 @RequestMapping("orders")
 public class OrderController {
+
+    @Value("${PARTITION}")
+    private int myOrderInstanceId;
+
+    private static int numOrderInstances = 2;
 
     @Autowired
     OrderService service;
@@ -44,7 +50,7 @@ public class OrderController {
         Optional<Order> optOrder = service.findOrder(orderId);
         if (optOrder.isPresent()) {
             Order order = optOrder.get();
-            return Map.of("order_id", order.getOrderId(), "user_id", order.getUserId(), "items", order.getItems(), "paid", order.isPaid(), "total_cost", order.getTotalCost());
+            return Map.of("order_id", order.getOrderId(numOrderInstances, myOrderInstanceId), "user_id", order.getUserId(), "items", order.getItems(), "paid", order.isPaid(), "total_cost", order.getTotalCost());
         } else {
             return ResponseEntity.notFound().build();
         }

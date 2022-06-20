@@ -173,9 +173,6 @@ public class PaymentService {
         // Convert local to global id
         paymentRepository.save(payment);
         int globalId = payment.getLocalId() * numPaymentInstances + myPaymentInstanceId;
-        payment.setUserId(globalId);
-        paymentRepository.save(payment);
-
         return globalId;
     }
 

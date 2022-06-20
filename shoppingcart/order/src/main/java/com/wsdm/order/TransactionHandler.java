@@ -82,8 +82,8 @@ public class TransactionHandler {
         order.setInCheckout(true);
         order.setReplicaHandlingCheckout(myReplicaId);
         orderRepository.save(order);
-        pendingResponses.put(order.getOrderId(), response);
-        currentCheckoutOrders.put(order.getOrderId(), order);
+        pendingResponses.put(order.getOrderId(numOrderInstances, myOrderInstanceId), response);
+        currentCheckoutOrders.put(order.getOrderId(numOrderInstances, myOrderInstanceId), order);
         sendStockCheck(order);
     }
 
@@ -102,11 +102,11 @@ public class TransactionHandler {
         log.put("total", stockPartition.size());
         log.put("count", 0);
         log.put("flag", true);
-        stockCheckLog.put(order.getOrderId(), log);
+        stockCheckLog.put(order.getOrderId(numOrderInstances, myOrderInstanceId), log);
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-            Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
-            Template.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(), data);
+            Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "items", partitionEntry.getValue());
+            Template.send("toStockCheck", partitionEntry.getKey(), order.getOrderId(numOrderInstances, myOrderInstanceId), data);
         }
     }
 
@@ -155,12 +155,12 @@ public class TransactionHandler {
         System.out.println("sending payment check for order" + order);
 
         // STEP 3: START PAYMENT TRANSACTION
-        int orderId = order.getOrderId();
+        int orderId = order.getOrderId(numOrderInstances, myOrderInstanceId);
         int userId = order.getUserId();
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "totalCost", order.getTotalCost());
 
-        Template.send("toPaymentTransaction", partition, order.getOrderId(), data);
+        Template.send("toPaymentTransaction", partition, order.getOrderId(numOrderInstances, myOrderInstanceId), data);
     }
 
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromPaymentTransaction",
@@ -195,11 +195,11 @@ public class TransactionHandler {
         log.put("total", stockPartition.size());
         log.put("count", 0);
         log.put("confirmations", new HashMap<Integer, Boolean>());
-        transactionLog.put(order.getOrderId(), log);
+        transactionLog.put(order.getOrderId(numOrderInstances, myOrderInstanceId), log);
 
         for (Map.Entry<Integer, List<Integer>> partitionEntry : stockPartition.entrySet()) {
-            Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionEntry.getValue());
-            Template.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(), data);
+            Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "items", partitionEntry.getValue());
+            Template.send("toStockTransaction", partitionEntry.getKey(), order.getOrderId(numOrderInstances, myOrderInstanceId), data);
         }
     }
 
@@ -246,8 +246,8 @@ public class TransactionHandler {
             if (confirmations.get(stockId)) {
                 // This stock id returned true, so we must rollback
                 List<Integer> partitionItems = stockPartition.get(stockId);
-                Map<String, Object> data = Map.of("orderId", order.getOrderId(), "items", partitionItems);
-                Template.send("toStockRollback", stockId, order.getOrderId(), data);
+                Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "items", partitionItems);
+                Template.send("toStockRollback", stockId, order.getOrderId(numOrderInstances, myOrderInstanceId), data);
             }
         }
     }
@@ -256,8 +256,8 @@ public class TransactionHandler {
         System.out.println("Sending payment rollback for order" + order);
         int userId = order.getUserId();
         int paymentPartition = Partitioner.getPartition(userId, numPaymentInstances);
-        Map<String, Object> data = Map.of("orderId", order.getOrderId(), "userId", userId, "refund", order.getTotalCost());
-        Template.send("toPaymentRollback", paymentPartition, order.getOrderId(), data);
+        Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "userId", userId, "refund", order.getTotalCost());
+        Template.send("toPaymentRollback", paymentPartition, order.getOrderId(numOrderInstances, myOrderInstanceId), data);
     }
 
     private void transactionFailed(int orderId) {

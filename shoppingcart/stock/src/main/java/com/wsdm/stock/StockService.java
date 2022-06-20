@@ -56,10 +56,6 @@ public class StockService {
         Map<String, Object> data = Map.of("itemId", globalId, "price", stock.getPrice());
         fromStockTemplate.send("fromStockItemPrice", 0, data);
 
-        stock.setItemId(globalId);
-        stock.setStockBroadcasted(Stock.StockBroadcasted.YES);
-        stockRepository.save(stock);
-
         return globalId;
     }
 
@@ -134,7 +130,7 @@ public class StockService {
         boolean enoughInStock = true;
         if (stocks.size() == ids.size()){
             for (Stock stock : stocks){
-                int required = itemIdToAmount.get(stock.getItemId());
+                int required = itemIdToAmount.get(stock.getItemId(numStockInstances, myStockInstanceId));
                 enoughInStock = enoughInStock && stock.getAmount() >= required;
                 if (!enoughInStock) {
                     break;
@@ -163,13 +159,13 @@ public class StockService {
 
         boolean enoughInStock = true;
         for (Stock stock : stocks) {
-            enoughInStock = enoughInStock && stock.getAmount() >= itemIdToAmount.get(stock.getItemId());
+            enoughInStock = enoughInStock && stock.getAmount() >= itemIdToAmount.get(stock.getItemId(numStockInstances, myStockInstanceId));
             assert(!stock.getOrderToItemsProcessed().containsKey(orderId));
         }
 
         if (enoughInStock) {
             for (Stock stock : stocks) {
-                int amount = itemIdToAmount.get(stock.getItemId());
+                int amount = itemIdToAmount.get(stock.getItemId(numStockInstances, myStockInstanceId));
                 stock.setAmount(stock.getAmount() - amount);
                 Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
                 orderToItemsProcessed.put(orderId, amount);
@@ -194,7 +190,7 @@ public class StockService {
 
         // Rollback amounts to stock
         for (Stock stock : stocks) {
-            int amount = itemIdToAmount.get(stock.getItemId());
+            int amount = itemIdToAmount.get(stock.getItemId(numStockInstances, myStockInstanceId));
             Map<Integer, Integer> orderToItemsProcessed = stock.getOrderToItemsProcessed();
             if (orderToItemsProcessed.containsKey(orderId)) {
                 assert(amount == orderToItemsProcessed.get(orderId));

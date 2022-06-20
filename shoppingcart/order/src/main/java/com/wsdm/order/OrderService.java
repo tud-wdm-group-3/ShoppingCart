@@ -79,13 +79,9 @@ public class OrderService {
 
     public int createOrder(int userId){
         Order order=new Order(userId);
-
         repository.save(order);
         int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
-        order.setOrderId(globalId);
-        order.setOrderBroadcasted(Order.OrderBroadcasted.YES);
         sendOrderExists(order, "create");
-        repository.save(order);
 
         return globalId;
     }
@@ -280,9 +276,9 @@ public class OrderService {
         int userId = order.getUserId();
         int partition = Partitioner.getPartition(userId, numPaymentInstances);
 
-        Map<String, Object> data = Map.of("orderId", order.getOrderId(), "userId", userId, "method", method);
+        Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "userId", userId, "method", method);
 
-        Template.send("toPaymentOrderExists", partition, order.getOrderId(), data);
+        Template.send("toPaymentOrderExists", partition, order.getOrderId(numOrderInstances, myOrderInstanceId), data);
     }
 
     private boolean mayChangeOrder(Order order) {

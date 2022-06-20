@@ -22,8 +22,6 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int localId;
 
-    private int orderId;
-
     @ElementCollection(fetch = FetchType.EAGER)
     private List<Integer> items;
     private int userId;
@@ -48,13 +46,16 @@ public class Order {
     public Order(int userId)
     {
         this.items = new ArrayList<>();
-        this.orderId = -1;
         this.userId = userId;
         this.totalCost = 0.0;
         this.paid = false;
-        this.orderBroadcasted = OrderBroadcasted.NO;
+        this.orderBroadcasted = OrderBroadcasted.YES;
         this.inCheckout = false;
         this.processedPaymentKeys = new HashSet<>();
         this.replicaHandlingCheckout = "";
+    }
+
+    public int getOrderId(int numOrderInstances, int myOrderInstanceId) {
+        return this.getLocalId() * numOrderInstances + myOrderInstanceId;
     }
 }

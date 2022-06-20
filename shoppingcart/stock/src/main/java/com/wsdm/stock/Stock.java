@@ -20,7 +20,6 @@ public class Stock {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer localId;
 
-    private Integer itemId;
     private Integer amount;
     private Double price;
 
@@ -42,6 +41,10 @@ public class Stock {
     public Stock(double price){
         this.amount = 0;
         this.price = price;
-        this.stockBroadcasted = StockBroadcasted.NO;
+        this.stockBroadcasted = StockBroadcasted.YES;
+    }
+
+    public int getItemId(int numStockInstances, int myStockInstanceId) {
+        return this.getLocalId() * numStockInstances + myStockInstanceId;
     }
 }
