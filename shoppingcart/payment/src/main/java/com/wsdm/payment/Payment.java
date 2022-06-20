@@ -35,5 +35,5 @@ public class Payment {
     @MapKeyColumn(name="name")
     @Column(name="value")
     @CollectionTable(name="orderIdToPaidAmount")
-    private Map<Integer, Integer> orderIdToPaidAmount = new HashMap<>();
+    private Map<Integer, Double> orderIdToPaidAmount = new HashMap<>();
 }

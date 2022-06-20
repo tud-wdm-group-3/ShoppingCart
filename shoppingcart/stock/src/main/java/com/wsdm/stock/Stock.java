@@ -39,7 +39,7 @@ public class Stock {
     @CollectionTable(name="orderIdToItemsProcessed")
     private Map<Integer, Integer> orderToItemsProcessed = new HashMap<>();
 
-    public Stock(int price){
+    public Stock(double price){
         this.amount = 0;
         this.price = price;
         this.stockBroadcasted = StockBroadcasted.NO;

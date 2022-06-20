@@ -149,7 +149,7 @@ public class PaymentService {
         }
     }
 
-    private void sendChangePaymentToOrder(int orderId, int userId, String type, int amount) {
+    private void sendChangePaymentToOrder(int orderId, int userId, String type, double amount) {
         int paymentKey = getKey();
         int partition = Partitioner.getPartition(orderId, numOrderInstances);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", type, "amount", amount, "replicaId", myReplicaId, "paymentKey", paymentKey);
@@ -255,12 +255,12 @@ public class PaymentService {
         return payment.getOrderIdToPaidAmount().containsKey(orderId);
     }
 
-    private boolean pay(Payment payment, int orderId, int cost) {
-        int credit = payment.getCredit();
+    private boolean pay(Payment payment, int orderId, double cost) {
+        double credit = payment.getCredit();
         boolean enoughCredit = credit >= cost;
         if (enoughCredit) {
             if (!isPaid(payment, orderId)) {
-                Map<Integer, Integer> orderIdToPaid = payment.getOrderIdToPaidAmount();
+                Map<Integer, Double> orderIdToPaid = payment.getOrderIdToPaidAmount();
                 System.out.println(orderIdToPaid);
                 orderIdToPaid.put(orderId, cost);
                 payment.setOrderIdToPaidAmount(orderIdToPaid);
@@ -272,10 +272,10 @@ public class PaymentService {
         return false;
     }
 
-    private boolean cancel(Payment payment, int orderId, int amount) {
+    private boolean cancel(Payment payment, int orderId, double amount) {
         if (isPaid(payment, orderId)) {
-            Map<Integer, Integer> orderIdToPaidAmount = payment.getOrderIdToPaidAmount();
-            int refund = orderIdToPaidAmount.remove(orderId);
+            Map<Integer, Double> orderIdToPaidAmount = payment.getOrderIdToPaidAmount();
+            double refund = orderIdToPaidAmount.remove(orderId);
             assert(amount != -1 || amount == refund);
             payment.setCredit(payment.getCredit() + refund);
             payment.setOrderIdToPaidAmount(orderIdToPaidAmount);

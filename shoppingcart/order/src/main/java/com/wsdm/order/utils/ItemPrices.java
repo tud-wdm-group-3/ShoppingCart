@@ -7,9 +7,9 @@ public class ItemPrices {
     /**
      * Map itemdId to price.
      */
-    private static Map<Integer, Integer> itemPrices = new HashMap<>();
+    private static Map<Integer, Double> itemPrices = new HashMap<>();
 
-    public static void addItemPrice(int itemId, int price) {
+    public static void addItemPrice(int itemId, double price) {
         itemPrices.put(itemId, price);
     }
 
@@ -17,7 +17,7 @@ public class ItemPrices {
         return itemPrices.containsKey(itemId);
     }
 
-    public static int getItemPrice(int itemId) {
+    public static double getItemPrice(int itemId) {
         return itemPrices.get(itemId);
     }
 }

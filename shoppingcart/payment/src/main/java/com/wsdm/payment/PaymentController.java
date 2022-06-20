@@ -38,7 +38,7 @@ public class PaymentController {
     public DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
         System.out.println("Received cancel from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
-        paymentService.changePayment(userId, orderId, -1, response, true);
+        paymentService.changePayment(userId, orderId, -1.0, response, true);
         return response;
     }
 
@@ -56,7 +56,7 @@ public class PaymentController {
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Map<String, Boolean> addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Integer amount) {
+    public Map<String, Boolean> addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount) {
         System.out.println("Adding " + amount + " to funds of user " + userId);
         return Map.of("done", paymentService.addFunds(userId, amount));
     }
