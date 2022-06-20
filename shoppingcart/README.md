@@ -24,3 +24,4 @@ This is a scaled-down version of the deployment without replication, for testing
 
 1. We never really used docker-compose so the `docker-compose.yml` is outdated
 2. The Dockerfiles are at the parent directory because of the parent-child maven dependencies in the `pom.xml`s
+3. *Scaling*: the deployments are configured to use a sharding factor of 2. Our implementation allows for this factor to be increased at will, but requires manual editing of the manifests - specifically adding another group of microservices' StatefulSets (so for example to use 3 shards, add order-2, payment-2, stock-2 to the already existing order-{0,1}, payment-{0,1}, stock-{0,1}).
