@@ -263,12 +263,19 @@ public class TransactionHandler {
     private void transactionFailed(int orderId) {
         System.out.println("transaction for order " + orderId + " failed.");
         currentCheckoutOrders.remove(orderId);
+        Order order = currentCheckoutOrders.remove(orderId);
+        order.setInCheckout(false);
+        order.setPaid(false);
+        order.setReplicaHandlingCheckout("");
+        order.setCheckedOut(false);
+        orderRepository.save(order);
         pendingResponses.remove(orderId).setResult(ResponseEntity.status(409).build());
     }
 
     private void transactionSucceeded(int orderId) {
         System.out.println("transaction for order " + orderId + " succeeded.");
         Order order = currentCheckoutOrders.remove(orderId);
+        order.setInCheckout(false);
         order.setPaid(true);
         order.setReplicaHandlingCheckout("");
         order.setCheckedOut(true);
