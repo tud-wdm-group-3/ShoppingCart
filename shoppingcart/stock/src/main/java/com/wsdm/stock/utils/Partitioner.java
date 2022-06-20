@@ -1,4 +1,4 @@
-package com.wsdm.payment.utils;
+package com.wsdm.stock.utils;
 
 import org.springframework.core.env.Environment;
 

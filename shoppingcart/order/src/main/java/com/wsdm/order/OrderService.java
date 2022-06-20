@@ -1,12 +1,10 @@
 package com.wsdm.order;
 
-import com.wsdm.order.utils.ItemPrices;
-import com.wsdm.order.utils.NameUtils;
-import com.wsdm.order.utils.Partitioner;
-import com.wsdm.order.utils.Template;
+import com.wsdm.order.utils.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
+import org.springframework.core.env.Environment;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -28,19 +26,12 @@ import java.util.concurrent.Future;
 
 @Service
 public class OrderService {
-    @Value("${PARTITION}")
-    private int myOrderInstanceId;
+
 
     private String myReplicaId = NameUtils.getHostname();
     public String getMyReplicaId() {
         return myReplicaId;
     }
-
-    private static int numStockInstances = 2;
-
-    private static int numPaymentInstances = 2;
-
-    private static int numOrderInstances = 2;
 
     private static OrderRepository repository;
 
@@ -48,29 +39,21 @@ public class OrderService {
 
     private KafkaTemplate<Integer, Object> kafkaTemplate;
 
+    Environment env;
+
     @Autowired
-    public OrderService(OrderRepository repository, KafkaTemplate<Integer, Object> kafkaTemplate) {
+    public OrderService(OrderRepository repository, KafkaTemplate<Integer, Object> kafkaTemplate, Environment environment) {
         this.repository = repository;
-        System.out.println("Order service started with replica-id " + myReplicaId);
+        // System.out.println("Order service started with replica-id " + myReplicaId);
 
         Template.addTemplate(kafkaTemplate);
-        transactionHandler = new TransactionHandler(repository);
+        env = environment;
+        transactionHandler = new TransactionHandler(repository, env);
 
-        List<Order> ordersNotBroadcasted = repository.findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted.YES);
-        List<Order> ordersToSave = new ArrayList<>();
-        for (Order orderNotBroadcasted : ordersNotBroadcasted) {
-            if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.NO) {
-                // this means we failed at creation before returning to client, so we delete this order
-                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.DELETED);
-                ordersToSave.add(orderNotBroadcasted);
-            } else if (orderNotBroadcasted.getOrderBroadcasted() == Order.OrderBroadcasted.PROCESSING_DELETION) {
-                // this means we failed at deletion before returning to client, so we rebroadcast and do not delete
-                sendOrderExists(orderNotBroadcasted, "create");
-                orderNotBroadcasted.setOrderBroadcasted(Order.OrderBroadcasted.YES);
-                ordersToSave.add(orderNotBroadcasted);
-            }
+        List<Order> orders = repository.findAll();
+        for (Order order : orders) {
+            sendOrderExists(order, "create");
         }
-        repository.saveAll(ordersToSave);
     }
 
     public List<Order> dump() {
@@ -80,10 +63,9 @@ public class OrderService {
     public int createOrder(int userId){
         Order order=new Order(userId);
         repository.save(order);
-        int globalId = order.getLocalId() * numOrderInstances + myOrderInstanceId;
         sendOrderExists(order, "create");
 
-        return globalId;
+        return order.getOrderId(env);
     }
 
     
@@ -92,11 +74,8 @@ public class OrderService {
         if (optOrder.isPresent()) {
             Order order = optOrder.get();
             if (mayChangeOrder(order)) {
-                order.setOrderBroadcasted(Order.OrderBroadcasted.PROCESSING_DELETION);
-                repository.save(order);
                 sendOrderExists(order, "delete");
-                order.setOrderBroadcasted(Order.OrderBroadcasted.DELETED);
-                repository.save(order);
+                repository.delete(order);
                 return true;
             }
         }
@@ -105,16 +84,7 @@ public class OrderService {
 
     public Optional<Order> findOrder(int orderId) {
         // Convert to local id
-        int localId = (orderId - myOrderInstanceId) / numOrderInstances;
-        Optional<Order> optOrder = repository.findById(localId);
-
-        if (optOrder.isPresent()) {
-            Order order = optOrder.get();
-            if (order.getOrderBroadcasted() == Order.OrderBroadcasted.DELETED) {
-                // do not return deleted orders
-                optOrder = Optional.empty();
-            }
-        }
+        Optional<Order> optOrder = repository.findById(Order.getLocalId(orderId, env));
         return optOrder;
     }
 
@@ -126,15 +96,13 @@ public class OrderService {
         Optional<Order> res = findOrder(orderId);
         if(res.isPresent()) {
             Order order = res.get();
-            if (mayChangeOrder(order)) {
-                List<Integer> items = order.getItems();
+            Set<Integer> items = order.getItems();
+            if (mayChangeOrder(order) && !items.contains(itemId)) {
                 items.add(itemId);
-                order.setItems(items);
 
                 // Increase order's total cost
                 double price = ItemPrices.getItemPrice(itemId);
                 order.setTotalCost(order.getTotalCost() + price);
-
                 repository.save(order);
                 return true;
             }
@@ -151,9 +119,9 @@ public class OrderService {
         if(res.isPresent()) {
             Order order = res.get();
             if (mayChangeOrder(order)) {
-                List<Integer> items = order.getItems();
+                Set<Integer> items = order.getItems();
                 if (items.contains(itemId)) {
-                    items.remove(Integer.valueOf(itemId));
+                    items.remove(itemId);
 
                     // Decrease order's total cost
                     double price = ItemPrices.getItemPrice(itemId);
@@ -196,10 +164,10 @@ public class OrderService {
      */
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "fromStockItemPrice",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "false")}))
-    private void receiveItemPrice(Map<String, Integer> item) {
-        int itemId = item.get("itemId");
-        double price = item.get("price");
-        System.out.println("Received item cache " + itemId + " with price " + price);
+    private void receiveItemPrice(Map<String, Object> item) {
+        int itemId = (int) item.get("itemId");
+        double price = (double) item.get("price");
+        // System.out.println("Received item cache " + itemId + " with price " + price);
 
         ItemPrices.addItemPrice(itemId, price);
     }
@@ -215,12 +183,12 @@ public class OrderService {
     public void paymentChanged(Map<String, Object> request) {
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
-        int amount = (int) request.get("amount");
+        double amount = (double) request.get("amount");
         String type = (String) request.get("type");
         String replicaId = (String) request.get("replicaId");
         int paymentKey = (int) request.get("paymentKey");
 
-        System.out.println("Received payment made/cancelled with order " + orderId + " from user " + userId + " and amount " + amount);
+        // System.out.println("Received payment made/cancelled with order " + orderId + " from user " + userId + " and amount " + amount);
 
         Optional<Order> optOrder = findOrder(orderId);
 
@@ -237,26 +205,26 @@ public class OrderService {
 
         if (type.contains("pay")) {
             if (mayChangeOrder(order) && order.getTotalCost() == amount) {
-                respondToPaymentChange(orderId, userId, true, "pay", replicaId, paymentKey, -1);
+                respondToPaymentChange(orderId, userId, true, "pay", replicaId, paymentKey, -1.0);
                 setPaid(order, true, paymentKey);
             } else {
                 respondToPaymentChange(orderId, userId, false, "pay", replicaId, paymentKey, amount);
             }
         } else if (type.contains("cancel")) {
             if (mayCancelOrder(order)) {
-                respondToPaymentChange(orderId, userId, true, "cancel", replicaId, paymentKey, -1);
+                respondToPaymentChange(orderId, userId, true, "cancel", replicaId, paymentKey, -1.0);
                 setPaid(order, false, paymentKey);
             } else {
-                respondToPaymentChange(orderId, userId, false, "cancel", replicaId, paymentKey, -1);
+                respondToPaymentChange(orderId, userId, false, "cancel", replicaId, paymentKey, -1.0);
             }
 
         }
     }
 
-    private void respondToPaymentChange(int orderId, int userId, boolean result, String type, String replicaId, int paymentKey, int refund) {
-        int partition = Partitioner.getPartition(userId, numPaymentInstances);
+    private void respondToPaymentChange(int orderId, int userId, boolean result, String type, String replicaId, int paymentKey, double refund) {
+        int partition = Partitioner.getPartition(userId, Partitioner.Service.PAYMENT, env);
         Map<String, Object> data;
-        if (refund != -1 && !result && type == "pay") {
+        if (refund != -1.0 && !result && type == "pay") {
             data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey, "refund", refund);
         } else {
             data = Map.of( "orderId", orderId, "userId", userId, "result", result, "type", type, "replicaId", replicaId, "paymentKey", paymentKey);
@@ -274,11 +242,11 @@ public class OrderService {
 
     public void sendOrderExists(Order order, String method) {
         int userId = order.getUserId();
-        int partition = Partitioner.getPartition(userId, numPaymentInstances);
+        int partition = Partitioner.getPartition(userId, Partitioner.Service.PAYMENT, env);
 
-        Map<String, Object> data = Map.of("orderId", order.getOrderId(numOrderInstances, myOrderInstanceId), "userId", userId, "method", method);
+        Map<String, Object> data = Map.of("orderId", order.getOrderId(env), "userId", userId, "method", method);
 
-        Template.send("toPaymentOrderExists", partition, order.getOrderId(numOrderInstances, myOrderInstanceId), data);
+        Template.send("toPaymentOrderExists", partition, order.getOrderId(env), data);
     }
 
     private boolean mayChangeOrder(Order order) {
@@ -289,5 +257,5 @@ public class OrderService {
         return order.isPaid() && !order.isInCheckout();
     }
 
-    private boolean mayCheckout(Order order) { return !order.isInCheckout();}
+    private boolean mayCheckout(Order order) { return !order.isInCheckout() && order.getItems().size() > 0;}
 }

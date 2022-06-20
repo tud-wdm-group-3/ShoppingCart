@@ -8,5 +8,4 @@ import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> findOrdersByInCheckoutAndReplicaHandlingCheckout(boolean inCheckout, String replicaHandlingCheckout);
-    List<Order> findOrdersByOrderBroadcastedIsNot(Order.OrderBroadcasted orderBroadcasted);
 }

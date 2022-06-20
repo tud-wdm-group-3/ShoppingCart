@@ -8,15 +8,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-eureka:
-  instance:
-    instanceId: ${spring.cloud.client.hostname}:${spring.application.name}:${random.int}
-  client:
-    serviceUrl:
-      defaultZone: ${EUREKA_SERVICE_URL:localhost} #http://${EUREKA_SERVER:localhost}:8761/eureka
+  mvc:
+    async:
+      request-timeout: -1
 
 PARTITION: ${PARTITION_ID:0}
+NUMSTOCK: 2
+NUMPAYMENT: 2
+NUMORDER: 2

@@ -6,6 +6,7 @@ import com.wsdm.payment.utils.Partitioner;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -23,19 +24,13 @@ import java.util.*;
 @Service
 public class PaymentService {
 
-    @Value("${PARTITION}")
-    private int myPaymentInstanceId;
+    @Autowired
+    Environment env;
 
     private String myReplicaId = NameUtils.getHostname();
     public String getMyReplicaId() {
         return myReplicaId;
     }
-
-    private static int numStockInstances = 2;
-
-    private static int numPaymentInstances = 2;
-
-    private static int numOrderInstances = 2;
 
     final PaymentRepository paymentRepository;
 
@@ -48,7 +43,7 @@ public class PaymentService {
     @Autowired
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
-        System.out.println("Payment service started with replica-id " + myReplicaId);
+        // System.out.println("Payment service started with replica-id " + myReplicaId);
     }
 
     public List<Payment> dump() {
@@ -106,7 +101,7 @@ public class PaymentService {
 
         // It must be processed by this replica, because only the replica can know whether he still has the
         // pending response.
-        System.out.println("Received payment response " + response);
+        // System.out.println("Received payment response " + response);
         if (replicaId.contains(myReplicaId) && !payment.getProcessedPaymentKeys().contains(paymentKey)) {
             if (type.contains("pay")) {
                 // Check if the payment went through
@@ -149,7 +144,7 @@ public class PaymentService {
 
     private void sendChangePaymentToOrder(int orderId, int userId, String type, double amount) {
         int paymentKey = getKey();
-        int partition = Partitioner.getPartition(orderId, numOrderInstances);
+        int partition = Partitioner.getPartition(orderId, Partitioner.Service.ORDER, env);
         Map<String, Object> data = Map.of("orderId", orderId, "userId", userId, "type", type, "amount", amount, "replicaId", myReplicaId, "paymentKey", paymentKey);
         fromPaymentTemplate.send("fromPaymentPaid", partition, orderId, data);
     }
@@ -172,13 +167,11 @@ public class PaymentService {
 
         // Convert local to global id
         paymentRepository.save(payment);
-        int globalId = payment.getLocalId() * numPaymentInstances + myPaymentInstanceId;
-        return globalId;
+        return payment.getUserId(env);
     }
 
     public Optional<Payment> findUser(Integer userId) {
-        int localId = (userId - myPaymentInstanceId) / numPaymentInstances;
-        return paymentRepository.findById(localId);
+        return paymentRepository.findById(Payment.getLocalId(userId, env));
     }
 
     public boolean addFunds(Integer userId, Double amount) {
@@ -201,14 +194,14 @@ public class PaymentService {
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentTransaction",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentTransaction(Map<String, Object> request) {
-        System.out.println("Received payment transaction " + request);
+        // System.out.println("Received payment transaction " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
-        int cost = (int) request.get("totalCost");
+        double cost = (double) request.get("totalCost");
 
         Payment payment = getPaymentWithError(userId);
         boolean paid = pay(payment, orderId, cost);
-        int partition = orderId % numOrderInstances;
+        int partition = Partitioner.getPartition(orderId, Partitioner.Service.ORDER, env);
         Map<String, Object> data = Map.of("orderId", orderId, "enoughCredit", paid);
         fromPaymentTemplate.send("fromPaymentTransaction", partition, orderId, data);
     }
@@ -216,7 +209,7 @@ public class PaymentService {
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentRollback",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "true")}))
     protected void getPaymentRollback(Map<String, Object> request) {
-        System.out.println("Received payment rollback " + request);
+        // System.out.println("Received payment rollback " + request);
         int orderId = (int) request.get("orderId");
         int userId = (int) request.get("userId");
 
@@ -233,7 +226,7 @@ public class PaymentService {
     @KafkaListener(groupId = "#{__listener.myReplicaId}", topicPartitions = @TopicPartition(topic = "toPaymentOrderExists",
             partitionOffsets = {@PartitionOffset(partition = "${PARTITION}", initialOffset = "-1", relativeToCurrent = "false")}))
     protected void receiveOrderExists(Map<String, Object> request) {
-        System.out.println("Received order exists " + request);
+        // System.out.println("Received order exists " + request);
         int orderId = (int) request.get("orderId");
         String method = (String) request.get("method");
         int userId = (int) request.get("userId");

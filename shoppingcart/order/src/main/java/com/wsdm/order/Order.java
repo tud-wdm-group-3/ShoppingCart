@@ -4,6 +4,7 @@ package com.wsdm.order;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.core.env.Environment;
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -23,18 +24,10 @@ public class Order {
     private int localId;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    private List<Integer> items;
+    private Set<Integer> items;
     private int userId;
     private double totalCost;
     private boolean paid;
-
-    enum OrderBroadcasted {
-        NO,
-        YES,
-        PROCESSING_DELETION,
-        DELETED
-    }
-    private OrderBroadcasted orderBroadcasted;
 
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<Integer> processedPaymentKeys;
@@ -45,17 +38,24 @@ public class Order {
 
     public Order(int userId)
     {
-        this.items = new ArrayList<>();
+        this.items = new HashSet<>();
         this.userId = userId;
         this.totalCost = 0.0;
         this.paid = false;
-        this.orderBroadcasted = OrderBroadcasted.YES;
         this.inCheckout = false;
         this.processedPaymentKeys = new HashSet<>();
         this.replicaHandlingCheckout = "";
     }
 
-    public int getOrderId(int numOrderInstances, int myOrderInstanceId) {
-        return this.getLocalId() * numOrderInstances + myOrderInstanceId;
+    public int getOrderId(Environment env) {
+        int numOrderInstances = Integer.parseInt(env.getProperty("NUMORDER"));
+        int instanceId = Integer.parseInt(env.getProperty("PARTITION"));
+        return this.getLocalId() * numOrderInstances + instanceId;
+    }
+
+    public static int getLocalId(int orderId, Environment env) {
+        int numOrderInstances = Integer.parseInt(env.getProperty("NUMORDER"));
+        int instanceId = Integer.parseInt(env.getProperty("PARTITION"));
+        return (orderId - instanceId) / numOrderInstances;
     }
 }

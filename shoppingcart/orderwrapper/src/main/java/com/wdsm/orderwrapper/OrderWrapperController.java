@@ -31,7 +31,7 @@ public class OrderWrapperController {
     public ResponseEntity create(@PathVariable(name="userId") int userId){
         try{
             int partition=figureOutPartition(-1);
-            System.out.println("In orderwrapper, received request to create order for user"+userId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, received request to create order for user"+userId+", calling partition "+partition);
              HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/create/"+userId))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -40,8 +40,8 @@ public class OrderWrapperController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
 
         }catch (Exception ex){
-            System.out.println("In orderwrapper, exception while requesting create order for user"+userId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting create order for user"+userId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
 
@@ -52,7 +52,7 @@ public class OrderWrapperController {
     public ResponseEntity remove(@PathVariable(name="orderId") int orderId) {
         try{
             int partition=figureOutPartition(orderId);
-            System.out.println("In orderwrapper, received request to remove order "+orderId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, received request to remove order "+orderId+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/remove/"+orderId))
                     .DELETE()
@@ -60,8 +60,8 @@ public class OrderWrapperController {
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         }catch (Exception ex){
-            System.out.println("In orderwrapper, exception while requesting remove order "+orderId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting remove order "+orderId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -70,7 +70,7 @@ public class OrderWrapperController {
     public ResponseEntity find(@PathVariable(name="orderId") int orderId) {
         try {
             int partition=figureOutPartition(orderId);
-            System.out.println("In orderwrapper, requesting find order "+orderId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, requesting find order "+orderId+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/find/"+orderId))
                     .GET()
@@ -78,8 +78,8 @@ public class OrderWrapperController {
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
-            System.out.println("In orderwrapper, exception while requesting remove order "+orderId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting remove order "+orderId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -90,7 +90,7 @@ public class OrderWrapperController {
                         @PathVariable(name="itemId") int itemId) {
         try{
             int partition=figureOutPartition(orderId);
-            System.out.println("In orderwrapper, requesting additem "+itemId+" to order "+orderId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, requesting additem "+itemId+" to order "+orderId+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/addItem/"+orderId+"/"+itemId))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -98,8 +98,8 @@ public class OrderWrapperController {
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         }catch (Exception ex){
-            System.out.println("In orderwrapper, exception while requesting additem "+itemId+" to order "+orderId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting additem "+itemId+" to order "+orderId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -109,7 +109,7 @@ public class OrderWrapperController {
                            @PathVariable(name="itemId") int itemId) {
         try{
             int partition=figureOutPartition(orderId);
-            System.out.println("In orderwrapper, requesting removeitem "+itemId+" from order "+orderId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, requesting removeitem "+itemId+" from order "+orderId+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/removeItem/"+orderId+"/"+itemId))
                     .DELETE()
@@ -117,8 +117,8 @@ public class OrderWrapperController {
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         }catch (Exception ex){
-            System.out.println("In orderwrapper, exception while requesting removeitem "+itemId+" from order "+orderId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting removeitem "+itemId+" from order "+orderId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -127,7 +127,7 @@ public class OrderWrapperController {
     public ResponseEntity checkout(@PathVariable(name="orderId") int orderId) {
         try{
             int partition=figureOutPartition(orderId);
-            System.out.println("In orderwrapper, requesting checkout for order "+orderId+", calling partition "+partition);
+            // System.out.println("In orderwrapper, requesting checkout for order "+orderId+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/orders/checkout/"+orderId))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -135,8 +135,8 @@ public class OrderWrapperController {
             HttpResponse<String> response= HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         }catch (Exception ex){
-            System.out.println("In orderwrapper, exception while requesting checkout for order "+orderId);
-            System.out.println(ex.getMessage());
+            // System.out.println("In orderwrapper, exception while requesting checkout for order "+orderId);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }

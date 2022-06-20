@@ -7,7 +7,7 @@ public abstract class NameUtils {
         try {
             return InetAddress.getLocalHost().getHostName();
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            // System.out.println(ex.getMessage());
         }
         return "";
     }

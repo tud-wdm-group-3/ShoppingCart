@@ -1,8 +1,8 @@
 package com.wsdm.payment;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Slf4j
 @RestController
 @RequestMapping("payment")
 public class PaymentController {
@@ -20,10 +19,8 @@ public class PaymentController {
     @Autowired
     PaymentService paymentService;
 
-    @Value("${PARTITION}")
-    private int myPaymentInstanceId;
-
-    private static int numPaymentInstances = 2;
+    @Autowired
+    Environment env;
 
     @GetMapping(path = "/dump")
     public List<Payment> dump() {
@@ -32,7 +29,7 @@ public class PaymentController {
 
     @PostMapping(path="pay/{user_id}/{order_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> pay(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId, @PathVariable("amount") Double amount) {
-        System.out.println("Received pay on from user " + userId + " for order " + orderId);
+        // System.out.println("Received pay on from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         paymentService.changePayment(userId, orderId, amount, response, false);
 
@@ -42,7 +39,7 @@ public class PaymentController {
 
     @PostMapping(path="cancel/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public DeferredResult<ResponseEntity> cancel(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
-        System.out.println("Received cancel from user " + userId + " for order " + orderId);
+        // System.out.println("Received cancel from user " + userId + " for order " + orderId);
         DeferredResult<ResponseEntity> response = new DeferredResult<>();
         paymentService.changePayment(userId, orderId, -1.0, response, true);
         return response;
@@ -50,30 +47,30 @@ public class PaymentController {
 
     @GetMapping(path="status/{user_id}/{order_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object getStatus(@PathVariable("user_id") Integer userId, @PathVariable("order_id") Integer orderId) {
-        System.out.println("Get status from user " + userId + " and order " + orderId);
+        // System.out.println("Get status from user " + userId + " and order " + orderId);
         return paymentService.getPaymentStatus(userId, orderId);
     }
 
     @PostMapping(path="create_user", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Integer> registerUser() {
         int userId = paymentService.registerUser();
-        System.out.println("Registered user with userId " + userId);
+        // System.out.println("Registered user with userId " + userId);
         return Map.of("user_id", userId);
     }
 
     @PostMapping(path="add_funds/{user_id}/{amount}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Boolean> addFunds(@PathVariable("user_id") Integer userId, @PathVariable("amount") Double amount) {
-        System.out.println("Adding " + amount + " to funds of user " + userId);
+        // System.out.println("Adding " + amount + " to funds of user " + userId);
         return Map.of("done", paymentService.addFunds(userId, amount));
     }
 
     @GetMapping(path="find_user/{user_id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Object findUser(@PathVariable("user_id") Integer userId) {
-        System.out.println("Finding user " + userId);
+        // System.out.println("Finding user " + userId);
         Optional<Payment> optPayment = paymentService.findUser(userId);
         if (optPayment.isPresent()) {
             Payment payment = optPayment.get();
-            return Map.of("user_id", payment.getUserId(numPaymentInstances, myPaymentInstanceId), "credit", payment.getCredit());
+            return Map.of("user_id", payment.getUserId(env), "credit", payment.getCredit());
         } else {
             return ResponseEntity.notFound().build();
         }

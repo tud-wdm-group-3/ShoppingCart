@@ -1,9 +1,9 @@
 package com.wsdm.stock;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.core.env.Environment;
 
 import javax.persistence.*;
 import java.util.HashMap;
@@ -23,12 +23,6 @@ public class Stock {
     private Integer amount;
     private Double price;
 
-    enum StockBroadcasted {
-        NO,
-        YES
-    }
-    private StockBroadcasted stockBroadcasted;
-
     /**
      * Information on how much stock.
      */
@@ -41,10 +35,17 @@ public class Stock {
     public Stock(double price){
         this.amount = 0;
         this.price = price;
-        this.stockBroadcasted = StockBroadcasted.YES;
     }
 
-    public int getItemId(int numStockInstances, int myStockInstanceId) {
-        return this.getLocalId() * numStockInstances + myStockInstanceId;
+    public int getItemId(Environment env) {
+        int numInstances = Integer.parseInt(env.getProperty("NUMSTOCK"));
+        int instanceId = Integer.parseInt(env.getProperty("PARTITION"));
+        return this.getLocalId() * numInstances + instanceId;
+    }
+
+    public static int getLocalId(int itemId, Environment env) {
+        int numInstances = Integer.parseInt(env.getProperty("NUMSTOCK"));
+        int instanceId = Integer.parseInt(env.getProperty("PARTITION"));
+        return (itemId - instanceId) / numInstances;
     }
 }

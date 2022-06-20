@@ -32,7 +32,7 @@ public class StockWrapperController {
     public ResponseEntity findItem(@PathVariable(name="item_id") int item_id){
         try{
             int partition = figureOutPartition(item_id);
-            System.out.println("In stockwrapper, requesting find item "+item_id+", calling partition "+partition);
+            // System.out.println("In stockwrapper, requesting find item "+item_id+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/stock/find/"+item_id))
                     .GET()
@@ -41,8 +41,8 @@ public class StockWrapperController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
 
         }catch (Exception ex){
-            System.out.println("In stockwrapper, exception requesting find item "+item_id);
-            System.out.println(ex.getMessage());
+            // System.out.println("In stockwrapper, exception requesting find item "+item_id);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -52,7 +52,7 @@ public class StockWrapperController {
                                         @PathVariable(name="amount") int amount){
         try{
             int partition=figureOutPartition(item_id);
-            System.out.println("In stockwrapper, requesting subtract item "+item_id+" for amount "+amount+", calling partition "+partition);
+            // System.out.println("In stockwrapper, requesting subtract item "+item_id+" for amount "+amount+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/stock/subtract/"+item_id+"/"+amount))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -61,8 +61,8 @@ public class StockWrapperController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
 
         }catch (Exception ex){
-            System.out.println("In stockwrapper, exception requesting subtract item "+item_id+" for amount "+amount);
-            System.out.println(ex.getMessage());
+            // System.out.println("In stockwrapper, exception requesting subtract item "+item_id+" for amount "+amount);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -72,7 +72,7 @@ public class StockWrapperController {
                                    @PathVariable(name="amount") int amount){
         try{
             int partition = figureOutPartition(item_id);
-            System.out.println("In stockwrapper, requesting add item "+item_id+" with amount "+amount+", calling partition "+partition);
+            // System.out.println("In stockwrapper, requesting add item "+item_id+" with amount "+amount+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/stock/add/"+item_id+"/"+amount))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -81,8 +81,8 @@ public class StockWrapperController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
 
         }catch (Exception ex){
-            System.out.println("In stockwrapper, exception requesting add item "+item_id+" with amount "+amount);
-            System.out.println(ex.getMessage());
+            // System.out.println("In stockwrapper, exception requesting add item "+item_id+" with amount "+amount);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -91,7 +91,7 @@ public class StockWrapperController {
     public ResponseEntity addItem(@PathVariable(name="price") double price){
         try{
             int partition = figureOutPartition(-1);
-            System.out.println("In stockwrapper, requesting create item with price "+price+", calling partition "+partition);
+            // System.out.println("In stockwrapper, requesting create item with price "+price+", calling partition "+partition);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(baseUri+partition+":8080/stock/item/create/"+price))
                     .POST(HttpRequest.BodyPublishers.noBody())
@@ -100,8 +100,8 @@ public class StockWrapperController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
 
         }catch (Exception ex){
-            System.out.println("In stockwrapper, exception requesting create item with price "+price);
-            System.out.println(ex.getMessage());
+            // System.out.println("In stockwrapper, exception requesting create item with price "+price);
+            // System.out.println(ex.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
